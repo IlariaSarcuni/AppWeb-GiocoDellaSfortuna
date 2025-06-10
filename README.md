@@ -41,5 +41,6 @@
 
 ## Users Credentials
 
-- username, password (plus any other requested info)
-- username, password (plus any other requested info)
+- username `ilaria@polito.it`, password `Ilaria00!`
+- username `francesca@polito.it`, password `Francesca02!`
+- username `roberta@polito.it`, password `Roberta07!`
