@@ -1,5 +1,5 @@
-import db from "./db.mjs";
-import { Game, Card, Round, InitialGameCard } from "./models/games.mjs";
+import db from "../db.mjs";
+import { Game, Card, Round, InitialGameCard }  from "../models/Games.mjs";
 import dayjs from "dayjs";
 
 /**

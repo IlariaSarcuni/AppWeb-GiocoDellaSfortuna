@@ -1,7 +1,8 @@
 import db from '../db.mjs';
 import crypto from 'crypto';
 
-export const  getUser = (email,password) => {
+export default function UserDao() {
+    this.getUser = (email,password) => {
         return new Promise((resolve, reject) => {
             const query = 'SELECT * FROM users WHERE email=?';
             db.get(query, [email], (err, row) => {
@@ -24,5 +25,5 @@ export const  getUser = (email,password) => {
             });
         });
     };
-
+}
  

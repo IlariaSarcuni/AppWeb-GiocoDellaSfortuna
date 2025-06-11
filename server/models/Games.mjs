@@ -35,4 +35,4 @@ function Round(round_id, game_id, card_id, round_number, guessed_correctly, chos
   this.time = time;
 }
 
-export { Card, Game, Round, InitialGameCard};
+export { Card, Game, InitialGameCard, Round };

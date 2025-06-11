@@ -1,0 +1,106 @@
+# Login as a sample user
+POST http://localhost:3001/api/sessions
+content-type: application/json
+
+{
+  "username": "ilaria@polito.it",
+  "password": "Ilaria00!"
+}
+
+###
+
+# Check current session (user info)
+GET http://localhost:3001/api/sessions/current
+
+###
+
+# Logout
+DELETE http://localhost:3001/api/sessions/current
+
+###
+
+# Get 3 random cards, excluding cards with id 2 and 4, without misfortune_index
+GET http://localhost:3001/api/cards?count=3&exclude=2&exclude=4&withMisfortuneIndex=false
+
+###
+
+# Get card by id
+GET http://localhost:3001/api/cards/5
+
+###
+
+# Create a new game
+POST http://localhost:3001/api/games
+content-type: application/json
+
+{
+  "user_id": 1,
+  "initialCardIds": [3, 7, 12],
+  "status": "ongoing"
+}
+
+###
+
+# Get all games for user with user_id 1
+GET http://localhost:3001/api/games/user/1
+
+###
+
+# Get specific game by id
+GET http://localhost:3001/api/games/10
+
+###
+
+# Update game status to "won"
+PATCH http://localhost:3001/api/games/10/status
+content-type: application/json
+
+{
+  "status": "won"
+}
+
+###
+
+# Delete a game
+DELETE http://localhost:3001/api/games/10
+
+###
+
+# Get initial cards of a game
+GET http://localhost:3001/api/games/10/initial-cards
+
+###
+
+# Get all rounds of a game
+GET http://localhost:3001/api/games/10/rounds
+
+###
+
+# Add a new round to a game
+POST http://localhost:3001/api/games/10/rounds
+content-type: application/json
+
+{
+  "card_id": 7,
+  "round_number": 2,
+  "guessed_correctly": 1,
+  "chosen_position": 2,
+  "time": "2025-06-11T09:15:00Z"
+}
+
+###
+
+# Get all won cards of a game
+GET http://localhost:3001/api/games/10/rounds/won
+
+###
+
+# Get a card for the next round, excluding cards 3, 7, 12
+GET http://localhost:3001/api/games/10/next-card?exclude=3&exclude=7&exclude=12
+
+###
+
+# Get a demo game for anonymous users
+GET http://localhost:3001/api/demo
+
+###
