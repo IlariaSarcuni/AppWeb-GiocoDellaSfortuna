@@ -1,28 +1,32 @@
-
 import "bootstrap/dist/css/bootstrap.min.css";
 import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route } from 'react-router';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
 
-import HomePage from './pages/HomePage';
-import AuthPage from './pages/AuthPage';
-import ProfilePage from './pages/ProfilePage';
-import GamePage from './pages/GamePage';
-import GameSummaryPage from './pages/GameSummaryPage';
-import DemoPage from './pages/DemoPage';
-import NotFound from './pages/NotFound';
+import HomePage from './components/HomePage';
+import { LoginForm } from './components/AuthPage';
+import ProfilePage from './components/ProfilePage';
+import GamePage from './components/GamePage';
+import GameSummaryPage from './components/GameSummaryPage';
+import DemoPage from './components/DemoPage';
+import NotFound from './components/NotFound';
+import LayoutPage from './components/LayoutPage';
 
-import API from "./API/API.mjs"
-
+import API from '/API.mjs'; 
 function App() {
   const [loggedIn, setLoggedIn] = useState(false);
-  const [message, setMessage] = useState('');
-  const [user, setUser] = useState('');
+  const [message, setMessage] = useState(null);
+  const [user, setUser] = useState(null);
 
   useEffect(() => {
     const checkAuth = async () => {
-      const user = await API.getUserInfo(); // we have the user info here
-      setLoggedIn(true);
-      setUser(user);
+      try {
+        const user = await API.getUserInfo();
+        setLoggedIn(true);
+        setUser(user);
+      } catch {
+        setLoggedIn(false);
+        setUser(null);
+      }
     };
     checkAuth();
   }, []);
@@ -33,7 +37,7 @@ function App() {
       setLoggedIn(true);
       setMessage({msg: `Welcome, ${user.name}!`, type: 'success'});
       setUser(user);
-    }catch(err) {
+    } catch(err) {
       setMessage({msg: err, type: 'danger'});
     }
   };
@@ -41,31 +45,24 @@ function App() {
   const handleLogout = async () => {
     await API.logOut();
     setLoggedIn(false);
-    // clean up everything
-    setMessage('');
+    setUser(null);
+    setMessage(null);
   };
 
-    /**
-    /                     => HomePage (benvenuto, login, istruzioni, demo)
-    /login                => AuthPage
-    /profile              => ProfilePage (cronologia partite, logout)
-    /game                 => GamePage (gioco single player, solo utenti loggati)
-    /game/summary         => GameSummaryPage (riepilogo dopo partita)
-    /demo                 => DemoPage (gioco demo, 1 round, solo anonimi)
-    *                    => NotFound
-    **/
+  return (
+    <Routes>
+        <Route element={<LayoutPage loggedIn={loggedIn} handleLogout={handleLogout} message={message} setMessage={setMessage}/>}>
+            <Route path="/" element={<HomePage loggedIn={loggedIn} />} />
+            <Route path="/login" element={loggedIn ? <Navigate replace to='/' /> : <LoginForm handleLogin={handleLogin}/>}/>
+            <Route path="/profile" element={loggedIn ? <ProfilePage user={user} /> : <Navigate replace to="/login"/>} />
 
-  return (    
-      <Routes>
-        <Route element={ <LayoutPage loggedIn={loggedIn} handleLogout={handleLogout} message={message} setMessage={setMessage} /> } ></Route>
-        <Route path="/" element={<HomePage />} />
-        <Route path='/login' element={loggedIn ? <Navigate replace to='/' /> : <LoginForm handleLogin={handleLogin} />} />       
-        <Route path="/profile" element={ loggedIn ? <Profile loggedIn={loggedIn} user={user} stato={stato} setStato={setStato}/> :  <LoginForm login={handleLogin} user={user} profile={true}/>} />
-        <Route path="/game" element={<GamePage />} />
-        <Route path="/game/summary" element={<GameSummaryPage />} />
-        <Route path="/demo" element={<DemoPage />} />
-        <Route path="*" element={<NotFound />} />
-      </Routes>
+            <Route path="/game" element={loggedIn ? <GamePage user={user} /> : <Navigate replace to="/login"/>}/>
+
+            <Route path="/game/summary" element={<GameSummaryPage />} />
+            <Route path="/demo" element={<DemoPage />} />
+            <Route path="*" element={<NotFound />} />
+        </Route>
+    </Routes>
   );
 }
 

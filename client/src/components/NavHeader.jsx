@@ -1,13 +1,13 @@
 import React from 'react';
 import { Navbar, Container } from 'react-bootstrap';
 import { Link } from 'react-router';
-import { LogoutButton } from './AuthComponents';
+import { LogoutButton } from './AuthPage';
 
 function NavHeader(props) {
   return (
-    <Navbar bg="success" data-bs-theme="dark" expand="lg">
+    <Navbar bg="warning" data-bs-theme="dark" expand="lg">
       <Container fluid>
-        <Link to="/" className="navbar-brand">HeapOverrun</Link>
+        <Link to="/" className="navbar-brand">Sfortunity</Link>
         {props.loggedIn ? (
           <LogoutButton logout={props.handleLogout} />
         ) : (

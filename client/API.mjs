@@ -1,8 +1,6 @@
-import { Card, Game, InitialGameCard, Round } from '../models.mjs/Games.mjs';
-
 const SERVER_URL = 'http://localhost:3001';
 
-// ================== AUTH ==================
+// ========== AUTH ==========
 
 const logIn = async (credentials) => {
   const response = await fetch(`${SERVER_URL}/api/sessions`, {
@@ -40,7 +38,7 @@ const logOut = async () => {
   }
 };
 
-// ================== CARDS ==================
+// ========== CARDS ==========
 
 const getInitialCards = async (count = 3) => {
   const response = await fetch(`${SERVER_URL}/api/cards?count=${count}`, {
@@ -48,9 +46,7 @@ const getInitialCards = async (count = 3) => {
     credentials: 'include'
   });
   if (response.ok) {
-    const cards = await response.json();
-    // cards: array di plain object { card_id, description, image, misfortune_index }
-    return cards.map(c => new Card(c.card_id, c.description, c.image, c.misfortune_index));
+    return await response.json(); // array di oggetti card
   } else {
     throw new Error('Errore nel recupero delle carte iniziali');
   }
@@ -62,14 +58,13 @@ const getCardById = async (card_id) => {
     credentials: 'include'
   });
   if (response.ok) {
-    const c = await response.json();
-    return new Card(c.card_id, c.description, c.image, c.misfortune_index);
+    return await response.json(); // oggetto card
   } else {
     throw new Error('Errore nel recupero della carta');
   }
 };
 
-// ================== GAME ==================
+// ========== GAME ==========
 
 const createGame = async (user_id, initialCardIds) => {
   const response = await fetch(`${SERVER_URL}/api/games`, {
@@ -79,9 +74,7 @@ const createGame = async (user_id, initialCardIds) => {
     body: JSON.stringify({ user_id, initialCardIds }),
   });
   if (response.ok) {
-    const g = await response.json();
-    // g: { game_id, user_id, date, status }
-    return new Game(g.game_id, g.user_id, g.date, g.status);
+    return await response.json(); // oggetto partita
   } else {
     throw new Error('Errore nella creazione della partita');
   }
@@ -93,8 +86,7 @@ const getGameById = async (game_id) => {
     credentials: 'include'
   });
   if (response.ok) {
-    const g = await response.json();
-    return new Game(g.game_id, g.user_id, g.date, g.status);
+    return await response.json(); // oggetto partita
   } else {
     throw new Error('Errore nel recupero della partita');
   }
@@ -109,9 +101,7 @@ const getNextRoundCard = async (game_id, exclude = []) => {
     credentials: 'include'
   });
   if (response.ok) {
-    const c = await response.json();
-    // { card_id, description, image, misfortune_index }
-    return new Card(c.card_id, c.description, c.image, c.misfortune_index);
+    return await response.json(); // oggetto card
   } else {
     throw new Error('Errore nel recupero della carta per il round');
   }
@@ -125,9 +115,7 @@ const sendRound = async ({ game_id, card_id, round_number, guessed_correctly, ch
     body: JSON.stringify({ card_id, round_number, guessed_correctly, chosen_position, time })
   });
   if (response.ok) {
-    const r = await response.json();
-    // { round_id, game_id, card_id, round_number, guessed_correctly, chosen_position, time }
-    return new Round(r.round_id, r.game_id, r.card_id, r.round_number, r.guessed_correctly, r.chosen_position, r.time);
+    return await response.json(); // oggetto round
   } else {
     throw new Error('Errore nell\'invio del round');
   }
@@ -141,14 +129,13 @@ const updateGameStatus = async (game_id, status) => {
     body: JSON.stringify({ status })
   });
   if (response.ok) {
-    const g = await response.json();
-    return new Game(g.game_id, g.user_id, g.date, g.status);
+    return await response.json(); // oggetto partita aggiornato
   } else {
     throw new Error('Errore nell\'aggiornamento dello stato partita');
   }
 };
 
-// ================== GAME SUMMARY ==================
+// ========== GAME SUMMARY ==========
 
 const getInitialCardsOfGame = async (game_id) => {
   const response = await fetch(`${SERVER_URL}/api/games/${game_id}/initial-cards`, {
@@ -156,9 +143,7 @@ const getInitialCardsOfGame = async (game_id) => {
     credentials: 'include'
   });
   if (response.ok) {
-    // [{id, game_id, card_id}]
-    const arr = await response.json();
-    return arr.map(c => new InitialGameCard(c.id, c.game_id, c.card_id));
+    return await response.json(); // array di oggetti initialGameCard
   } else {
     throw new Error('Errore nel recupero delle carte iniziali della partita');
   }
@@ -170,15 +155,13 @@ const getRoundsOfGame = async (game_id) => {
     credentials: 'include'
   });
   if (response.ok) {
-    // [{round_id, game_id, card_id, round_number, guessed_correctly, chosen_position, time}]
-    const arr = await response.json();
-    return arr.map(r => new Round(r.round_id, r.game_id, r.card_id, r.round_number, r.guessed_correctly, r.chosen_position, r.time));
+    return await response.json(); // array di oggetti round
   } else {
     throw new Error('Errore nel recupero dei round della partita');
   }
 };
 
-// ================== PROFILE ==================
+// ========== PROFILE ==========
 
 const getGamesByUser = async (user_id) => {
   const response = await fetch(`${SERVER_URL}/api/games/user/${user_id}`, {
@@ -187,33 +170,26 @@ const getGamesByUser = async (user_id) => {
     credentials: 'include'
   });
   if (response.ok) {
-    const games = await response.json();
-    // [{game_id, user_id, date, status}]
-    return games.map(g => new Game(g.game_id, g.user_id, g.date, g.status));
+    return await response.json(); // array di oggetti game
   } else {
     throw new Error('Errore nel recupero delle partite utente');
   }
 };
 
-// ================== DEMO ==================
+// ========== DEMO ==========
 
 const getDemo = async () => {
   const response = await fetch(`${SERVER_URL}/api/demo`, {
     method: 'GET'
   });
   if (response.ok) {
-    // { initialCards: [...], roundCard: {...} }
-    const demo = await response.json();
-    return {
-      initialCards: demo.initialCards.map(c => new Card(c.card_id, c.description, c.image, c.misfortune_index)),
-      roundCard: new Card(demo.roundCard.card_id, demo.roundCard.description, demo.roundCard.image, demo.roundCard.misfortune_index)
-    };
+    return await response.json(); // oggetto demo { initialCards: [...], roundCard: {...} }
   } else {
     throw new Error('Errore nel recupero della demo');
   }
 };
 
-// ================== EXPORT ==================
+// ========== EXPORT ==========
 
 const API = {
   // Auth

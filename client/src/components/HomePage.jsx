@@ -4,15 +4,12 @@ import { Link } from "react-router";
 
 function HomePage(props) {
 
-  useEffect(() => {
-    props.setPage && props.setPage(1);
-  }, []);
 
   return (
     <Container className="screen text-center mt-5">
       <Row>
         <Col>
-          <h1 className="title">Benvenuto su <span className="text-success fw-bold">Sfortunity</span>!</h1>
+          <h1 className="title">Benvenuto su <span className="fw-bold">Sfortunity</span>!</h1>
           <p className="lead">
             Il gioco delle sfortune universitarie ispirato a "Stuff Happens".<br />
             Dimostra la tua fortuna... o la tua sfortuna!
