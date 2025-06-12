@@ -29,12 +29,14 @@ passport.use(new LocalStrategy(async function verify(username, password, cb) {
   const user = await getUser(username, password);
   if(!user)
     return cb(null, false, 'Incorrect username or password.');
+    
   return cb(null, user);
 }));
 
 passport.serializeUser(function (user, cb) {
   cb(null, user);
 });
+
 passport.deserializeUser(function (user, cb) {
   return cb(null, user);
 });
@@ -47,11 +49,12 @@ const isLoggedIn = (req, res, next) => {
 }
 
 app.use(session({
-  secret: "it is a secret!",
+  secret: "It is a secret!",
   resave: false,
   saveUninitialized: false,
 }));
 app.use(passport.authenticate('session'));
+
 
 // --------- API ROUTES ---------
 
@@ -109,9 +112,11 @@ app.post('/api/game/:game_id/init-cards', isLoggedIn, async (req, res) => {
   try {
     const game_id = req.params.game_id;
     const card_ids = req.body.card_ids;
+    console.log("game_id:", game_id, "card_ids:", card_ids);
     await gameDao.addInitialCards(game_id, card_ids);
     res.status(201).end();
   } catch (err) {
+    console.error("ERRORE addInitialCards:", err);
     res.status(500).json({ error: `Database error during initial card assignment: ${err}` });
   }
 });
@@ -193,7 +198,7 @@ app.put('/api/game/:game_id/status', isLoggedIn, async (req, res) => {
 // --- DEMO (pubblica, NO login) ---
 
 // 11. Partita demo: 3 carte iniziali + 1 situazione random
-app.get('/api/game/demo', async (req, res) => {
+app.get('/api/demo', async (req, res) => {
   try {
     const result = await gameDao.getDemoCards();
     res.json(result);

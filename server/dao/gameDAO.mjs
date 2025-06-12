@@ -99,7 +99,7 @@ export default function GameDao() {
         });
     };
 
-    // Update game status (win/lose/ongoing)
+    // Update game status (win/lose only, not ongoing)
     this.updateGameStatus = (game_id, status) => {
         return new Promise((resolve, reject) => {
             const query = 'UPDATE games SET status = ? WHERE game_id = ?';
@@ -114,7 +114,7 @@ export default function GameDao() {
     this.addInitialCards = (game_id, card_ids) => {
         return Promise.all(card_ids.map(card_id => {
             return new Promise((resolve, reject) => {
-                const query = 'INSERT INTO rounds (game_id, card_id, round_number, guessed_correctly, time) VALUES (?, ?, 0, 1, datetime("now"))';
+                const query = 'INSERT INTO initial_game_cards (game_id, card_id) VALUES (?, ?)';
                 db.run(query, [game_id, card_id], function (err) {
                     if (err) reject(err);
                     else resolve();

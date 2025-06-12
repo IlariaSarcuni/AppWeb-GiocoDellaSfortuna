@@ -133,7 +133,7 @@ const updateGameStatus = async (game_id, status) => {
 
 // 11. Partita demo (3 carte iniziali + 1 situazione random, NO login necessario)
 const getDemoCards = async () => {
-  const response = await fetch(`${SERVER_URL}/api/game/demo`);
+  const response = await fetch(`${SERVER_URL}/api/demo`);
   if (response.ok) {
     return await response.json();
   } else {
@@ -146,7 +146,9 @@ const getDemoCards = async () => {
 const logIn = async (credentials) => {
   const response = await fetch(SERVER_URL + '/api/sessions', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: {
+      'Content-Type': 'application/json',
+    },
     credentials: 'include',
     body: JSON.stringify(credentials),
   });
@@ -168,7 +170,7 @@ const getUserInfo = async () => {
   if (response.ok) {
     return user;
   } else {
-    throw user;
+    throw user;  // an object with the error coming from the server
   }
 };
 
@@ -179,7 +181,7 @@ const logOut = async() => {
   });
   if (response.ok)
     return null;
-};
+}
 
 // ----------- EXPORT -----------
 

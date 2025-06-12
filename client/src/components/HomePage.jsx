@@ -1,9 +1,32 @@
 import { Row, Col, Container } from "react-bootstrap";
-import React, { useEffect } from 'react';
-import { Link } from "react-router";
+import React, { useState } from "react";
+import { useNavigate } from "react-router";
 
 function HomePage(props) {
+  const navigate = useNavigate();
 
+  // Uno stato per ogni bottone!
+  const [pendingDemo, setPendingDemo] = useState(false);
+  const [pendingPlay, setPendingPlay] = useState(false);
+  const [pendingHistory, setPendingHistory] = useState(false);
+
+  // Handler per bottone demo
+  const handleDemoClick = () => {
+    setPendingDemo(true);
+    navigate("/demo");
+  };
+
+  // Handler per bottone gioca ora
+  const handlePlayClick = () => {
+    setPendingPlay(true);
+    navigate("/game");
+  };
+
+  // Handler per bottone cronologia
+  const handleHistoryClick = () => {
+    setPendingHistory(true);
+    navigate("/history");
+  };
 
   return (
     <Container className="screen text-center mt-5">
@@ -30,12 +53,30 @@ function HomePage(props) {
           </div>
           <div className="btn-home d-flex justify-content-center gap-2">
             {!props.loggedIn && (
-              <Link className='btn btn-primary' to="/demo">GIOCA UNA DEMO</Link>
+              <button
+                className="btn btn-primary"
+                onClick={handleDemoClick}
+                disabled={pendingDemo}
+              >
+                GIOCA UNA DEMO
+              </button>
             )}
             {props.loggedIn && (
               <>
-                <Link className='btn btn-success' to="/game">GIOCA ORA</Link>
-                <Link className='btn btn-secondary' to="/history">CRONOLOGIA PARTITE</Link>
+                <button
+                  className="btn btn-success"
+                  onClick={handlePlayClick}
+                  disabled={pendingPlay}
+                >
+                  GIOCA ORA
+                </button>
+                <button
+                  className="btn btn-secondary"
+                  onClick={handleHistoryClick}
+                  disabled={pendingHistory}
+                >
+                  CRONOLOGIA PARTITE
+                </button>
               </>
             )}
           </div>
