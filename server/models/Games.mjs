@@ -17,13 +17,6 @@ function Game(game_id, user_id, date, status = 'ongoing') {
   // NB: le carte e i round si ottengono tramite join su altre tabelle (initial_game_cards, rounds)
 }
 
-// Costruttore per InitialGameCard
-function InitialGameCard(id, game_id, card_id) {
-  this.id = id;
-  this.game_id = game_id;
-  this.card_id = card_id;
-}
-
 // Costruttore per Round
 function Round(round_id, game_id, card_id, round_number, guessed_correctly, chosen_position, time) {
   this.round_id = round_id;
@@ -35,4 +28,4 @@ function Round(round_id, game_id, card_id, round_number, guessed_correctly, chos
   this.time = time;
 }
 
-export { Card, Game, InitialGameCard, Round };
+export { Card, Game, Round };

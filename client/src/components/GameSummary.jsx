@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useLocation, Link, useNavigate } from "react-router";
 import { Container, Row, Col, Card, Alert, Button } from "react-bootstrap";
 
-function GameSummaryPage() {
+function GameSummary() {
   const location = useLocation();
   const navigate = useNavigate();
   const { gameId, result } = location.state || {};
@@ -104,4 +104,4 @@ function GameSummaryPage() {
   );
 }
 
-export default GameSummaryPage;
+export default GameSummary;

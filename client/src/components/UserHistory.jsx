@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Alert, Spinner, Table, Badge, Button } from "react-bootstrap";
 import { useNavigate } from "react-router";
 
-function ProfilePage() {
+function UserHistory() {
   const [games, setGames] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -92,4 +92,4 @@ function ProfilePage() {
   );
 }
 
-export default ProfilePage;
+export default UserHistory;

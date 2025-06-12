@@ -20,10 +20,11 @@ function LoginForm(props) {
     }
 
     return (
-        <>
-            { isPending && <Alert variant="warning">Per favore, attendi la risposta del server...</Alert> }
-            <Row>
-                <Col md={6}>
+        <>            
+            { isPending && <Alert variant="warning">Per favore, attendi la risposta del server...</Alert> }    
+            <Row className="justify-content-center mt-5">
+                <Col md={4}>
+                    <h2 className="text-center mb-4">Login</h2>
                     <Form action={formAction}>
                         <Form.Group controlId='username' className='mb-3'>
                             <Form.Label>Email</Form.Label>

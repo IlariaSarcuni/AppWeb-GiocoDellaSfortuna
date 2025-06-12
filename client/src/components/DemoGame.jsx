@@ -1,48 +1,50 @@
 import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Card, Alert, Form, Button, ProgressBar } from "react-bootstrap";
+import API from '../API.mjs';
 
 function sortCards(cards) {
   return [...cards].sort((a, b) => a.misfortune_index - b.misfortune_index);
 }
 
-function DemoPage() {
+function DemoGame() {
   const [initialCards, setInitialCards] = useState([]);
   const [roundCard, setRoundCard] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [chosenPos, setChosenPos] = useState(null);
   const [feedback, setFeedback] = useState(null);
   const [timer, setTimer] = useState(30);
-  const [loading, setLoading] = useState(true);
   const [showResult, setShowResult] = useState(false);
 
-  useEffect(() => {
-    async function fetchDemo() {
-      setLoading(true);
-      setShowResult(false);
-      setChosenPos(null);
-      setFeedback(null);
-      setTimer(30);
+  //Funzione per caricare la demo
+  async function loadDemo() {
+    setLoading(true);
+    setShowResult(false);
+    setChosenPos(null);
+    setFeedback(null);
+    setTimer(30);
 
-      const res = await fetch("http://localhost:3001/api/demo");
-      if (res.ok) {
-        const demo = await res.json();
-        setInitialCards(sortCards(demo.initialCards));
-        setRoundCard(demo.roundCard);
-      }
-      setLoading(false);
+    try {
+      const demo = await API.getDemoCards();
+      setInitialCards(sortCards(demo.initialCards));
+      setRoundCard(demo.roundCard);
+    } catch (err) {
+      setFeedback({ type: "danger", msg: "Errore nel caricamento della demo." });
     }
-    fetchDemo();
+    setLoading(false);
+  }
+
+  useEffect(() => {
+    loadDemo();
   }, []);
 
-  // Timer di 30 secondi
   useEffect(() => {
     if (loading || showResult) return;
     if (timer <= 0) {
-      handleSubmit(null, true); // Simula timeout
+      handleSubmit(null, true);
       return;
     }
     const t = setTimeout(() => setTimer((old) => old - 1), 1000);
     return () => clearTimeout(t);
-    // eslint-disable-next-line
   }, [timer, loading, showResult]);
 
   function handlePositionChange(e) {
@@ -51,35 +53,34 @@ function DemoPage() {
 
   async function handleSubmit(e, timeout = false) {
     if (e) e.preventDefault();
+    if (loading || !roundCard || roundCard.misfortune_index == null) {
+      setFeedback({ type: "danger", msg: "La situazione non è pronta. Ricarica la demo." });
+      setShowResult(true);
+      return;
+    }
     if (chosenPos === null && !timeout) {
       setFeedback({ type: "danger", msg: "Seleziona una posizione!" });
       return;
     }
-    // Ottieni dettaglio carta da demo (l'API /api/demo non fornisce misfortune_index per la roundCard)
-    const cardRes = await fetch(`http://localhost:3001/api/cards/${roundCard.card_id}`);
-    const cardFull = await cardRes.json();
-    // Trova posizione reale
+
+    let misfortuneIndex = roundCard.misfortune_index;
+
     let pos = 0;
-    while (pos < initialCards.length && cardFull.misfortune_index > initialCards[pos].misfortune_index) pos++;
+    while (pos < initialCards.length && misfortuneIndex > initialCards[pos].misfortune_index) pos++;
     const guessedCorrectly = !timeout && pos === chosenPos;
 
     if (timeout) {
-      setFeedback({ type: "danger", msg: "Tempo scaduto! Non hai vinto la carta." });
+      setFeedback({ type: "danger", msg: "Tempo scaduto!", extra: `Indice di sfortuna: ${misfortuneIndex}` });
     } else if (guessedCorrectly) {
-      setFeedback({ type: "success", msg: "Bravo! Posizione corretta, avresti vinto la carta." });
+      setFeedback({ type: "success", msg: "Complimenti, posizione corretta!", extra: `Indice di sfortuna: ${misfortuneIndex}` });
     } else {
-      setFeedback({
-        type: "danger",
-        msg: `Errore! La posizione corretta era ${pos + 1}.`,
-        extra: `Indice reale: ${cardFull.misfortune_index}`,
-      });
+      setFeedback({ type: "danger", msg: `Errore! La posizione corretta era ${pos + 1}.`, extra: `Indice di sfortuna: ${misfortuneIndex}`});
     }
     setShowResult(true);
   }
 
-  function handleReplay() {
-    // Ricarica la pagina demo
-    window.location.reload();
+  async function handleReplay() {
+    await loadDemo();
   }
 
   return (
@@ -99,7 +100,7 @@ function DemoPage() {
                         <Card.Img variant="top" src={c.image} style={{ height: 70, objectFit: "cover" }} />
                         <Card.Body>
                           <Card.Text style={{ fontSize: "0.9em" }}>{c.description}</Card.Text>
-                          <div className="text-muted" style={{ fontSize: "0.8em" }}>Indice: {c.misfortune_index}</div>
+                          <div className="text-center" style={{ fontSize: "1.3em", fontWeight: "bold" }}>{c.misfortune_index}</div>
                         </Card.Body>
                       </Card>
                       {idx < initialCards.length - 1 && (
@@ -120,25 +121,31 @@ function DemoPage() {
                   {!showResult && (
                     <Form onSubmit={handleSubmit}>
                       <Form.Group>
-                        <Form.Label>In quale posizione tra le tue carte la inseriresti?</Form.Label>
+                        <Form.Label>Qual è la posizione corretta?</Form.Label>
                         <div>
                           {Array(initialCards.length + 1).fill(0).map((_, i) => (
                             <Form.Check
                               inline
                               key={i}
-                              label={i === 0 ? "Prima di tutte" : i === initialCards.length ? "Dopo tutte" : `Tra ${i} e ${i + 1}`}
+                              label={
+                                i === 0
+                                  ? "Prima"
+                                  : i === initialCards.length
+                                    ? "Ultima"
+                                    : `Tra ${i} e ${i + 1}`
+                              }
                               name="position"
                               type="radio"
                               value={i}
                               checked={chosenPos === i}
                               onChange={handlePositionChange}
-                              disabled={showResult}
+                              disabled={showResult || loading}
                             />
                           ))}
                         </div>
                       </Form.Group>
-                      <Button type="submit" className="mt-2" disabled={showResult}>
-                        Conferma posizione
+                      <Button type="submit" className="mt-2" disabled={showResult || loading}>
+                        Conferma
                       </Button>
                     </Form>
                   )}
@@ -146,9 +153,10 @@ function DemoPage() {
                     <Alert variant={feedback.type} className="mt-3">
                       {feedback.msg} {feedback.extra && <div>{feedback.extra}</div>}
                       {showResult && (
-                        <Button className="mt-3" onClick={handleReplay}>
-                          Prova un'altra demo
-                        </Button>
+                        <>
+                          <Button className="mt-3 me-2" onClick={handleReplay} disabled={loading}>Prova un'altra demo</Button>
+                          <Button className="mt-3" href="/">Torna alla home</Button>
+                        </>
                       )}
                     </Alert>
                   )}
@@ -162,4 +170,4 @@ function DemoPage() {
   );
 }
 
-export default DemoPage;
+export default DemoGame;

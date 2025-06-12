@@ -1,17 +1,18 @@
 import "bootstrap/dist/css/bootstrap.min.css";
 import { useEffect, useState } from "react";
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router';
+import { Routes, Route, Navigate } from 'react-router';
 
 import HomePage from './components/HomePage';
 import { LoginForm } from './components/AuthPage';
-import ProfilePage from './components/ProfilePage';
+import UserHistory from './components/UserHistory';
 import GamePage from './components/GamePage';
-import GameSummaryPage from './components/GameSummaryPage';
-import DemoPage from './components/DemoPage';
+import GameSummary from './components/GameSummary';
+import DemoGame from './components/DemoGame';
 import NotFound from './components/NotFound';
 import LayoutPage from './components/LayoutPage';
 
-import API from '/API.mjs'; 
+import API from './API.mjs';
+
 function App() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [message, setMessage] = useState(null);
@@ -23,7 +24,7 @@ function App() {
         const user = await API.getUserInfo();
         setLoggedIn(true);
         setUser(user);
-      } catch {
+      } catch (err) {
         setLoggedIn(false);
         setUser(null);
       }
@@ -35,9 +36,9 @@ function App() {
     try {
       const user = await API.logIn(credentials);
       setLoggedIn(true);
-      setMessage({msg: `Welcome, ${user.name}!`, type: 'success'});
       setUser(user);
-    } catch(err) {
+      setMessage({msg: `Welcome, ${user.name}!`, type: 'success'});
+    }catch(err) {
       setMessage({msg: err, type: 'danger'});
     }
   };
@@ -46,22 +47,20 @@ function App() {
     await API.logOut();
     setLoggedIn(false);
     setUser(null);
-    setMessage(null);
+    setMessage('');
   };
 
   return (
     <Routes>
-        <Route element={<LayoutPage loggedIn={loggedIn} handleLogout={handleLogout} message={message} setMessage={setMessage}/>}>
-            <Route path="/" element={<HomePage loggedIn={loggedIn} />} />
-            <Route path="/login" element={loggedIn ? <Navigate replace to='/' /> : <LoginForm handleLogin={handleLogin}/>}/>
-            <Route path="/profile" element={loggedIn ? <ProfilePage user={user} /> : <Navigate replace to="/login"/>} />
-
-            <Route path="/game" element={loggedIn ? <GamePage user={user} /> : <Navigate replace to="/login"/>}/>
-
-            <Route path="/game/summary" element={<GameSummaryPage />} />
-            <Route path="/demo" element={<DemoPage />} />
-            <Route path="*" element={<NotFound />} />
-        </Route>
+      <Route element={<LayoutPage loggedIn={loggedIn} handleLogout={handleLogout} message={message} setMessage={setMessage}/>}>
+        <Route path="/" element={<HomePage loggedIn={loggedIn} />} />
+        <Route path="/demo" element={<DemoGame />} />          
+        <Route path="/game" element={loggedIn ? <GamePage user={user} /> : <Navigate replace to="/"/>} />  
+        <Route path="summary" element={<GameSummary user={user} />} />
+        <Route path="/history" element={loggedIn ? <UserHistory user={user} /> : <Navigate replace to="/"/>} />            
+        <Route path="/login" element={loggedIn ? <Navigate replace to='/' /> : <LoginForm handleLogin={handleLogin}/>}/>
+        <Route path="*" element={<NotFound />} />
+      </Route>
     </Routes>
   );
 }
