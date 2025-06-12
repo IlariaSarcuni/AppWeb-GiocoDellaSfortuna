@@ -255,19 +255,22 @@ function GamePage({ user }) {
     return null;
   }
 
-  // Mostra bottone "Nuova partita" se non c'è una partita in corso
+  
+  // Avvia la partita appena si entra nella pagina (solo se non attiva)
+  useEffect(() => {
+    if (!gameId && isFirstLoad) {
+      handleStartGame();
+    }
+  // eslint-disable-next-line
+  }, [gameId, isFirstLoad]);
+
+  // Mostra un loader se la partita sta per essere creata
   if (!gameId) {
     return (
       <Container className="mt-4 text-center">
         <Row>
           <Col>
-            <Button
-              className="btn btn-success"
-              onClick={handleStartGame}
-              disabled={loading}
-            >
-              {loading ? <Spinner animation="border" size="sm" /> : "Nuova partita"}
-            </Button>
+            <Spinner animation="border" size="lg" />
             {feedback && (
               <Alert variant={feedback.type} className="mt-3">
                 {feedback.msg}
