@@ -1,304 +1,327 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
+import { Container, Row, Col, Card, Alert, Form, Button, ProgressBar, Spinner } from "react-bootstrap";
+import API from "../API.mjs";
 import { useNavigate } from "react-router";
-import { Alert, Button, Col, Container, Form, Row, ProgressBar, Card as BsCard } from "react-bootstrap";
 
-// Utility per ordinare le carte per indice crescente
 function sortCards(cards) {
   return [...cards].sort((a, b) => a.misfortune_index - b.misfortune_index);
 }
 
-function GamePage() {
-  // Stato
-  const [gameId, setGameId] = useState(null);
-  const [initialCards, setInitialCards] = useState([]);
-  const [wonCards, setWonCards] = useState([]);
-  const [roundNumber, setRoundNumber] = useState(1);
-  const [roundCard, setRoundCard] = useState(null);
-  const [chosenPos, setChosenPos] = useState(null);
-  const [timer, setTimer] = useState(30);
-  const [feedback, setFeedback] = useState(null);
-  const [error, setError] = useState(null);
-  const [roundsLost, setRoundsLost] = useState(0);
+function GamePage({ user }) {
   const [loading, setLoading] = useState(true);
-  const [waitingNext, setWaitingNext] = useState(false);
+  const [initialCards, setInitialCards] = useState([]);
+  const [situation, setSituation] = useState(null);
+  const [gameId, setGameId] = useState(null);
+  const [chosenPos, setChosenPos] = useState(null);
+  const [feedback, setFeedback] = useState(null);
+  const [timer, setTimer] = useState(30);
+  const [showResult, setShowResult] = useState(false);
+  const [roundNumber, setRoundNumber] = useState(1);
+  const [numWon, setNumWon] = useState(0);
+  const [numLost, setNumLost] = useState(0);
+  const [gameOver, setGameOver] = useState(false);
+  const [status, setStatus] = useState("ongoing");
+  const [wonCards, setWonCards] = useState([]);
+  const [allCards, setAllCards] = useState([]);
+  const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const roundIdRef = useRef(null);
 
   const navigate = useNavigate();
-  const timerRef = useRef();
 
-  // Avvio partita: 1. Prendi utente 2. Carte 3. Crea partita
+  // Inizializza nuova partita
   useEffect(() => {
-    async function startGame() {
+    const startGame = async () => {
+      setLoading(true);
+      setGameOver(false);
+      setStatus("ongoing");
+      setFeedback(null);
+      setTimer(30);
+      setShowResult(false);
+      setRoundNumber(1);
+      setNumWon(0);
+      setNumLost(0);
+      setWonCards([]);
+      setAllCards([]);
+
       try {
-        // Ottieni user
-        const userRes = await fetch("http://localhost:3001/api/sessions/current", { credentials: "include" });
-        if (!userRes.ok) throw new Error("Non autenticato");
-        const user = await userRes.json();
-
-        // Prendi 3 carte iniziali
-        const cardsRes = await fetch("http://localhost:3001/api/cards?count=3", { credentials: "include" });
-        const cards = await cardsRes.json();
-
-        // Crea partita sul server
-        const gameRes = await fetch("http://localhost:3001/api/games", {
-          method: "POST",
-          credentials: "include",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ user_id: user.user_id, initialCardIds: cards.map(c => c.card_id) }),
-        });
-        const { game_id } = await gameRes.json();
+        // 1. Crea partita
+        const { game_id } = await API.createGame();
         setGameId(game_id);
-        setInitialCards(sortCards(cards));
-        setWonCards([]); // reset
-        setRoundNumber(1);
-        setRoundsLost(0);
-        setError(null);
+
+        // 2. Ottieni 3 carte iniziali random
+        const initCards = await API.getInitialCards();
+        setInitialCards(sortCards(initCards));
+        setAllCards(sortCards(initCards));
+
+        // 3. Salva carte iniziali nel DB (round_number=0)
+        await API.saveInitialCards(game_id, initCards.map(c => c.card_id));
+
+        // 4. Ottieni la prima situazione da indovinare
+        const sit = await API.getSituation(game_id);
+        setSituation(sit);
+
+        // 5. Ottieni eventuali carte vinte (inizialmente nessuna)
+        setWonCards([]);
         setLoading(false);
+        setIsFirstLoad(false);
       } catch (err) {
-        setError("Errore avvio partita: " + err.message);
+        setFeedback({ type: "danger", msg: "Errore durante la creazione della partita. Riprova." });
         setLoading(false);
       }
-    }
+    };
+
     startGame();
     // eslint-disable-next-line
   }, []);
 
-  // Ogni round: recupera nuova carta da indovinare
+  // Aggiornamento timer round
   useEffect(() => {
-    if (!gameId || loading) return;
-    // Se partita già finita, non fare nulla
-    if (wonCards.length >= 6 || roundsLost >= 3) return;
-
-    async function fetchRoundCard() {
-      // Carte da escludere: iniziali + già vinte + già giocate
-      const exclude = [
-        ...initialCards.map(c => c.card_id),
-        ...wonCards.map(c => c.card_id),
-      ];
-      const params = new URLSearchParams();
-      exclude.forEach(id => params.append("exclude", id));
-      params.append("withMisfortuneIndex", "false");
-
-      const res = await fetch(`http://localhost:3001/api/games/${gameId}/next-card?${params.toString()}`, {
-        credentials: "include",
-      });
-      if (!res.ok) {
-        setError("Nessuna altra carta disponibile o errore server.");
-        setRoundCard(null);
-        return;
-      }
-      const card = await res.json();
-      setRoundCard(card);
-      setChosenPos(null);
-      setFeedback(null);
-      setTimer(30);
-      setWaitingNext(false);
-    }
-    fetchRoundCard();
-    // eslint-disable-next-line
-  }, [gameId, roundNumber, loading]);
-
-  // Timer countdown
-  useEffect(() => {
-    if (feedback || loading || !roundCard) return;
+    if (loading || showResult || gameOver) return;
     if (timer <= 0) {
-      handleTimeExpire();
+      handleSubmit(null, true);
       return;
     }
-    timerRef.current = setTimeout(() => setTimer(t => t - 1), 1000);
-    return () => clearTimeout(timerRef.current);
+    const t = setTimeout(() => setTimer((old) => old - 1), 1000);
+    return () => clearTimeout(t);
     // eslint-disable-next-line
-  }, [timer, feedback, loading, roundCard]);
+  }, [timer, loading, showResult, gameOver]);
 
-  // Gestione scelta posizione
+  // Gestione selezione posizione
   function handlePositionChange(e) {
     setChosenPos(Number(e.target.value));
   }
 
-  // Quando l'utente conferma la posizione
-  async function handleSubmit(e) {
-    e.preventDefault();
-    if (chosenPos === null) {
+  // Gestione invio risposta round
+  async function handleSubmit(e, timeout = false) {
+    if (e) e.preventDefault();
+    if (loading || !situation || situation.misfortune_index == null) {
+      setFeedback({ type: "danger", msg: "La situazione non è pronta. Riprova." });
+      setShowResult(true);
+      return;
+    }
+    if (chosenPos === null && !timeout) {
       setFeedback({ type: "danger", msg: "Seleziona una posizione!" });
       return;
     }
-    clearTimeout(timerRef.current);
 
-    // Ottieni dettagli carta vera per confronto (indice sfortuna)
-    const cardRes = await fetch(`http://localhost:3001/api/cards/${roundCard.card_id}`, { credentials: "include" });
-    const cardFull = await cardRes.json();
-    // Unisci carte in possesso
-    const allCards = sortCards([...initialCards, ...wonCards]);
-    // Trova posizione reale
+    let misfortuneIndex = situation.misfortune_index;
+
+    // Calcola posizione corretta tra le carte in possesso (allCards)
+    let sorted = sortCards(allCards);
     let pos = 0;
-    while (pos < allCards.length && cardFull.misfortune_index > allCards[pos].misfortune_index) pos++;
-    const guessedCorrectly = pos === chosenPos;
+    while (pos < sorted.length && misfortuneIndex > sorted[pos].misfortune_index) pos++;
+    const guessedCorrectly = !timeout && pos === chosenPos;
 
-    // Salva round su server
-    await fetch(`http://localhost:3001/api/games/${gameId}/rounds`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        card_id: roundCard.card_id,
-        round_number: roundNumber,
-        guessed_correctly: guessedCorrectly ? 1 : 0,
-        chosen_position: chosenPos,
-        time: 30 - timer,
-      }),
-    });
+    // 1. Registra il round (API.addRound restituisce round_id)
+    try {
+      const round_id = await API.addRound(gameId, situation.card_id, roundNumber);
+      roundIdRef.current = round_id;
 
-    // Feedback e aggiorna carte se vinto
-    if (guessedCorrectly) {
-      setWonCards(prev => sortCards([...prev, cardFull]));
-      setFeedback({ type: "success", msg: "Bravo! Posizione corretta, hai vinto la carta." });
-    } else {
-      setRoundsLost(x => x + 1);
-      setFeedback({
-        type: "danger",
-        msg: `Errore! La posizione corretta era ${pos + 1}.`,
-        extra: `Indice di sfortuna reale: ${cardFull.misfortune_index}`,
-      });
+      // 2. Aggiorna esito round
+      await API.updateRoundResult(round_id, guessedCorrectly ? 1 : 0, chosenPos);
+
+      // 3. Aggiorna stato locale
+      if (guessedCorrectly) {
+        setFeedback({
+          type: "success",
+          msg: "Complimenti, posizione corretta!",
+          extra: `Indice di sfortuna: ${misfortuneIndex}`
+        });
+        // Aggiungi carta vinta all'insieme di carte possedute
+        const updated = sortCards([...allCards, situation]);
+        setAllCards(updated);
+        setNumWon((nw) => nw + 1);
+
+        // Aggiorna elenco carte vinte
+        const updatedWon = await API.getWonCards(gameId);
+        setWonCards(updatedWon);
+
+        // Controlla se vince la partita (6 carte)
+        if (updated.length === 6) {
+          await API.updateGameStatus(gameId, "win");
+          setStatus("win");
+          setGameOver(true);
+        }
+      } else {
+        setFeedback({
+          type: timeout ? "danger" : "danger",
+          msg: timeout
+            ? "Tempo scaduto!"
+            : `Errore! La posizione corretta era ${pos + 1}.`,
+          extra: `Indice di sfortuna: ${misfortuneIndex}`
+        });
+        setNumLost((nl) => nl + 1);
+
+        // Controlla se perde (3 errori)
+        if (numLost + 1 >= 3) {
+          await API.updateGameStatus(gameId, "lose");
+          setStatus("lose");
+          setGameOver(true);
+        }
+      }
+      setShowResult(true);
+    } catch (err) {
+      setFeedback({ type: "danger", msg: "Errore nel salvataggio del round." });
+      setShowResult(true);
     }
-    setWaitingNext(true);
   }
 
-  // Se scade il tempo e non hai risposto
-  async function handleTimeExpire() {
-    clearTimeout(timerRef.current);
-    setFeedback({ type: "danger", msg: "Tempo scaduto! Non hai vinto la carta." });
-    setRoundsLost(x => x + 1);
-
-    // Salva round come perso
-    await fetch(`http://localhost:3001/api/games/${gameId}/rounds`, {
-      method: "POST",
-      credentials: "include",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        card_id: roundCard.card_id,
-        round_number: roundNumber,
-        guessed_correctly: 0,
-        chosen_position: null,
-        time: 30,
-      }),
-    });
-    setWaitingNext(true);
-  }
-
-  // Avanti round
-  function handleNextRound() {
-    setRoundNumber(n => n + 1);
+  // Gestisci nuovo round
+  async function handleNextRound() {
+    setLoading(true);
+    setChosenPos(null);
     setTimer(30);
     setFeedback(null);
-    setChosenPos(null);
+    setShowResult(false);
+
+    try {
+      // Ottieni nuova situazione da indovinare (API si occupa di non ripetere carte già usate)
+      const sit = await API.getSituation(gameId);
+      setSituation(sit);
+      setRoundNumber(rn => rn + 1);
+    } catch (err) {
+      setFeedback({ type: "danger", msg: "Errore nel caricamento della situazione. Riprova." });
+    }
+    setLoading(false);
   }
 
-  // Fine partita: aggiorna stato su server e vai a summary
-  useEffect(() => {
-    if (!gameId || loading) return;
-    if (wonCards.length >= 6 || roundsLost >= 3) {
-      // PATCH stato partita
-      fetch(`http://localhost:3001/api/games/${gameId}/status`, {
-        method: "PATCH",
-        credentials: "include",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: wonCards.length >= 6 ? "win" : "lose" }),
-      }).then(() =>
-        setTimeout(() => navigate("/game/summary", { state: { gameId, result: wonCards.length >= 6 ? "win" : "lose" } }), 1500)
-      );
-    }
-    // eslint-disable-next-line
-  }, [wonCards, roundsLost, gameId, loading]);
+  // Riepilogo finale
+  function handleShowSummary() {
+    navigate("/summary", { state: { gameId } });
+  }
 
-  if (loading) return <Container className="text-center mt-5"><Alert variant="info">Caricamento partita...</Alert></Container>;
-  if (error) return <Container className="mt-5"><Alert variant="danger">{error}</Alert></Container>;
-  if (wonCards.length >= 6 || roundsLost >= 3) {
+  // Riavvia una nuova partita
+  function handleRestartGame() {
+    window.location.reload();
+  }
+
+  // Visualizza riepilogo carte possedute (iniziali + vinte)
+  function renderCardList() {
+    const sorted = sortCards(allCards);
     return (
-      <Container className="text-center mt-5">
-        <Alert variant={wonCards.length >= 6 ? "success" : "danger"}>
-          Partita terminata! 
-          {wonCards.length >= 6 ? " Hai vinto!" : " Hai perso!"}
-        </Alert>
-        <div>Riepilogo in arrivo...</div>
-      </Container>
+      <Row className="mb-2">
+        {sorted.map((c, idx) => (
+          <Col key={c.card_id} xs={6} md={4} className="mb-2">
+            <Card border="primary" className="h-100">
+              <Card.Img variant="top" src={c.image} style={{ height: 70, objectFit: "cover" }} />
+              <Card.Body>
+                <Card.Text style={{ fontSize: "0.9em" }}>{c.description}</Card.Text>
+                <div className="text-center" style={{ fontSize: "1.3em", fontWeight: "bold" }}>{c.misfortune_index}</div>
+              </Card.Body>
+            </Card>
+            {idx < sorted.length - 1 && (
+              <div className="text-center text-secondary" style={{ fontSize: "1.5em" }}>&darr;</div>
+            )}
+          </Col>
+        ))}
+      </Row>
     );
   }
 
-  // Tutte le carte in possesso
-  const allCards = sortCards([...initialCards, ...wonCards]);
+  // Messaggio di fine partita
+  function renderEndMessage() {
+    if (status === "win") {
+      return (
+        <Alert variant="success" className="mt-3">
+          <h4>Hai vinto!</h4>
+          <p>Hai raccolto tutte le 6 carte!</p>
+          <Button className="me-2" onClick={handleShowSummary}>Vedi riepilogo</Button>
+          <Button variant="secondary" onClick={handleRestartGame}>Nuova partita</Button>
+        </Alert>
+      );
+    }
+    if (status === "lose") {
+      return (
+        <Alert variant="danger" className="mt-3">
+          <h4>Partita persa!</h4>
+          <p>Hai commesso 3 errori. Riprova!</p>
+          <Button className="me-2" onClick={handleShowSummary}>Vedi riepilogo</Button>
+          <Button variant="secondary" onClick={handleRestartGame}>Nuova partita</Button>
+        </Alert>
+      );
+    }
+    return null;
+  }
 
   return (
     <Container className="mt-4">
       <Row>
         <Col md={8} className="mx-auto">
-          <h2 className="text-success">Partita in corso</h2>
-          <div className="mb-2">
-            <strong>Round:</strong> {roundNumber} / 10 &nbsp; | &nbsp;
-            <strong>Carte raccolte:</strong> {wonCards.length + 3}/6 &nbsp; | &nbsp;
-            <strong>Errori:</strong> {roundsLost}/3
-          </div>
-          <ProgressBar now={timer * 100 / 30} label={`${timer}s`} variant={timer > 10 ? "success" : "danger"} className="mb-3" />
-
-          <h5>Le tue carte (ordinate per sfortuna):</h5>
-          <Row className="mb-3">
-            {allCards.map((c, idx) => (
-              <Col key={c.card_id} xs={6} md={4} lg={2} className="mb-2">
-                <BsCard border="primary" className="h-100">
-                  <BsCard.Img variant="top" src={c.image} style={{ height: 70, objectFit: "cover" }} />
-                  <BsCard.Body>
-                    <BsCard.Text style={{ fontSize: "0.9em" }}>{c.description}</BsCard.Text>
-                    <div className="text-muted" style={{ fontSize: "0.8em" }}>Indice: {c.misfortune_index}</div>
-                  </BsCard.Body>
-                </BsCard>
-                {idx < allCards.length - 1 && (
-                  <div className="text-center text-secondary" style={{ fontSize: "1.5em" }}>&darr;</div>
-                )}
-              </Col>
-            ))}
-          </Row>
-
-          {roundCard && (
-            <>
-              <Alert variant="info">
-                <b>Nuova carta da posizionare:</b> &nbsp;
-                <img src={roundCard.image} alt="" width={50} style={{ verticalAlign: "middle" }} /> &nbsp;
-                <span style={{ fontWeight: 500 }}>{roundCard.description}</span>
-              </Alert>
-              <Form onSubmit={handleSubmit}>
-                <Form.Group>
-                  <Form.Label>Dove la posizioni tra le tue carte?</Form.Label>
-                  <div>
-                    {Array(allCards.length + 1).fill(0).map((_, i) => (
-                      <Form.Check
-                        inline
-                        key={i}
-                        label={i === 0 ? "Prima di tutte" : i === allCards.length ? "Dopo tutte" : `Tra ${i} e ${i + 1}`}
-                        name="position"
-                        type="radio"
-                        value={i}
-                        checked={chosenPos === i}
-                        onChange={handlePositionChange}
-                        disabled={!!feedback}
-                      />
-                    ))}
-                  </div>
-                </Form.Group>
-                <Button type="submit" className="mt-2" disabled={!!feedback || chosenPos === null || waitingNext}>
-                  Conferma posizione
-                </Button>
-              </Form>
-            </>
+          <h2>Partita {gameId}</h2>
+          {loading && (
+            <Alert variant="info">
+              <Spinner animation="border" size="sm" /> Caricamento...
+            </Alert>
           )}
 
-          {feedback &&
-            <Alert variant={feedback.type} className="mt-3">
-              {feedback.msg} {feedback.extra && <div>{feedback.extra}</div>}
-              {waitingNext &&
-                <div>
-                  <Button className="mt-2" onClick={handleNextRound}>Prossimo round</Button>
-                </div>
-              }
-            </Alert>
-          }
+          {!loading && (
+            <>
+              <div className="mb-3">
+                <strong>Le tue carte:</strong>
+                {renderCardList()}
+              </div>
+              <div>
+                <b>Carte raccolte: {allCards.length} / 6 &nbsp; | &nbsp; Errori: {numLost} / 3</b>
+              </div>
+
+              {/* Situazione da indovinare */}
+              {!gameOver && situation && (
+                <>
+                  <Alert variant="info" className="mt-3">
+                    <b>Situzione da collocare:</b> &nbsp;
+                    <img src={situation.image} alt="" width={50} style={{ verticalAlign: "middle" }} /> &nbsp;
+                    <span style={{ fontWeight: 500 }}>{situation.description}</span>
+                  </Alert>
+                  <ProgressBar now={timer * 100 / 30} label={`${timer}s`} variant={timer > 10 ? "success" : "danger"} className="mb-3" />
+                  {!showResult && (
+                    <Form onSubmit={handleSubmit}>
+                      <Form.Group>
+                        <Form.Label>Qual è la posizione corretta?</Form.Label>
+                        <div>
+                          {Array(allCards.length + 1).fill(0).map((_, i) => (
+                            <Form.Check
+                              inline
+                              key={i}
+                              label={
+                                i === 0
+                                  ? "Prima"
+                                  : i === allCards.length
+                                    ? "Ultima"
+                                    : `Tra ${i} e ${i + 1}`
+                              }
+                              name="position"
+                              type="radio"
+                              value={i}
+                              checked={chosenPos === i}
+                              onChange={handlePositionChange}
+                              disabled={showResult || loading}
+                            />
+                          ))}
+                        </div>
+                      </Form.Group>
+                      <Button type="submit" className="mt-2" disabled={showResult || loading}>
+                        Conferma
+                      </Button>
+                    </Form>
+                  )}
+                  {/* Feedback round */}
+                  {feedback && showResult && (
+                    <Alert variant={feedback.type} className="mt-3">
+                      {feedback.msg} {feedback.extra && <div>{feedback.extra}</div>}
+                      {!gameOver && (
+                        <Button className="mt-3" onClick={handleNextRound} disabled={loading}>
+                          Prossimo round
+                        </Button>
+                      )}
+                    </Alert>
+                  )}
+                </>
+              )}
+
+              {/* Fine partita */}
+              {gameOver && renderEndMessage()}
+            </>
+          )}
         </Col>
       </Row>
     </Container>

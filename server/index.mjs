@@ -96,13 +96,13 @@ app.get('/api/game/init-cards', isLoggedIn, async (req, res) => {
 // 2. Crea nuova partita
 app.post('/api/game', isLoggedIn, async (req, res) => {
   try {
-    const user_id = req.user.user_id;
+    const user_id = req.user.id;
     const game_id = await gameDao.addGame(user_id);
     res.json({ game_id });
   } catch (err) {
     res.status(500).json({ error: `Database error during game creation: ${err}` });
   }
-});
+});;
 
 // 3. Salva le carte iniziali in una partita
 app.post('/api/game/:game_id/init-cards', isLoggedIn, async (req, res) => {
