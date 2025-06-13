@@ -142,7 +142,7 @@ export default function GameDao() {
     // Create a new round
     this.addRound = (game_id, card_id, round_number) => {
         return new Promise((resolve, reject) => {
-            const query = 'INSERT INTO rounds (game_id, card_id, round_number, guessed_correctly, time) VALUES (?, ?, ?, 0, datetime("now"))';
+            const query = 'INSERT INTO rounds (game_id, card_id, round_number, guessed_correctly, chosen_position, time) VALUES (?, ?, ?, ?, ?, ?)';
             db.run(query, [game_id, card_id, round_number], function (err) {
                 if (err) reject(err);
                 else resolve(this.lastID); // round_id
@@ -183,7 +183,18 @@ export default function GameDao() {
         });
     };
 
-    // Get all card_ids already used in a game (initial and rounds)
+    // Get only the IDs of the initial cards for a game (usando la tabella initial_game_cards)
+    this.getInitialCardIds = (game_id) => {
+        return new Promise((resolve, reject) => {
+            const query = "SELECT card_id FROM initial_game_cards WHERE game_id = ?";
+            db.all(query, [game_id], (err, rows) => {
+                if (err) reject(err);
+                else resolve(rows.map(r => r.card_id));
+            });
+        });
+    };
+
+    // Get all card_ids already used in a game (rounds)
     this.getUsedCardIdsInGame = (game_id) => {
         return new Promise((resolve, reject) => {
             const query = 'SELECT card_id FROM rounds WHERE game_id = ?';
@@ -208,6 +219,17 @@ export default function GameDao() {
                 else resolve(mapRowsToCards(rows));
             });
         });
+    };
+
+    // Ottieni i dati di una partita specifica
+    this.getGameById = (game_id) => {
+    return new Promise((resolve, reject) => {
+        const query = 'SELECT * FROM games WHERE game_id = ?';
+        db.get(query, [game_id], (err, row) => {
+        if (err) reject(err);
+        else resolve(row);
+        });
+    });
     };
 
     // Get all games for a user, ordered by date desc

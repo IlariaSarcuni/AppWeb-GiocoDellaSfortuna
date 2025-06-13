@@ -25,7 +25,7 @@ function Round(round_id, game_id, card_id, round_number, guessed_correctly, chos
   this.round_number = round_number;
   this.guessed_correctly = guessed_correctly;
   this.chosen_position = chosen_position;
-  this.time = time;
+  this.time = dayjs(time);
 }
 
 export { Card, Game, Round };

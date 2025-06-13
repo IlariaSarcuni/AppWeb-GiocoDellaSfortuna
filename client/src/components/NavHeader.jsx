@@ -5,12 +5,12 @@ import { LogoutButton } from './AuthPage';
 
 function NavHeader(props) {
   return (
-    <Navbar bg="success" data-bs-theme="dark" expand="lg">
+    <Navbar bg="success" data-bs-theme="dark" expand="lg" style={{ minHeight: "80px" }}>
       <Container fluid>
-        <Link to="/" className="navbar-brand ms-3">Sfortunity</Link>
+        <Link to="/" className="navbar-brand ms-3" style={{ fontSize: "2rem" }}>Sfortunity</Link>
         <div className="ms-auto me-3">
           {props.loggedIn ? (
-            <LogoutButton logout={props.handleLogout} />
+            <LogoutButton logout={props.handleLogout}  />
           ) : (
             <Link to="/login" className="btn btn-outline-light">
               Login

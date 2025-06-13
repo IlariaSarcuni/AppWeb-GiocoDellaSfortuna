@@ -24,6 +24,9 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 
+// Serve le immagini delle carte (cartella /img nella root del progetto)
+app.use('/img', express.static('img'))
+
 // --- AUTH ---
 passport.use(new LocalStrategy(async function verify(username, password, cb) {
   const user = await getUser(username, password);
@@ -80,9 +83,6 @@ app.delete('/api/sessions/current', (req, res) => {
   });
 });
 
-// Serve le immagini delle carte (cartella /img nella root del progetto)
-app.use(express.static('img'))
-
 // --- GAME ROUTES (autenticato) ---
 
 // 1. Ottieni 3 carte random (iniziali) per una nuova partita
@@ -121,13 +121,36 @@ app.post('/api/game/:game_id/init-cards', isLoggedIn, async (req, res) => {
   }
 });
 
-// 4. Ottieni la situazione da indovinare (una card non tra quelle già usate)
+// 4. Ottieni la situazione da indovinare (una card non tra quelle già usate/iniziali/vinte)
 app.get('/api/game/:game_id/situation', isLoggedIn, async (req, res) => {
   try {
-    const usedIds = await gameDao.getUsedCardIdsInGame(req.params.game_id);
-    const cards = await gameDao.getRandomCards(1, usedIds);
-    res.json(cards[0]);
+    const game_id = req.params.game_id;
+
+    //Prendi tutte le carte iniziali
+    const initialIds = await gameDao.getInitialCardIds(game_id);
+
+    //Prendi tutte le carte vinte (già possedute) 
+    const wonCards = await gameDao.getWonCardsInGame(game_id);
+    const wonIds = wonCards.map(c => c.card_id);
+
+    //Prendi tutte le carte già usate nei round
+    const usedIds = await gameDao.getUsedCardIdsInGame(game_id);
+
+    //Unisci tutti gli id da escludere (senza duplicati)
+    const excludeIds = Array.from(new Set([...initialIds, ...wonIds, ...usedIds]));
+
+    // Pesca una carta random escludendo quelle sopra
+    const cards = await gameDao.getRandomCards(1, excludeIds);
+
+    //Manda la carta (o errore se nessuna disponibile)
+    if (!cards.length) {
+      res.status(404).json({ error: "Nessuna carta disponibile!" });
+    } else {
+      res.json(cards[0]);
+    }
+
   } catch (err) {
+    console.error("Errore get situation:", err);
     res.status(500).end();
   }
 });
@@ -195,9 +218,23 @@ app.put('/api/game/:game_id/status', isLoggedIn, async (req, res) => {
   }
 });
 
+// 11. Ottieni i dati di una singola partita (detto "summary")
+  app.get('/api/game/:game_id', isLoggedIn, async (req, res) => {
+    console.log("Richiesta dati partita:", req.params.game_id);
+    try {
+      const game = await gameDao.getGameById(req.params.game_id);
+      if (!game) {
+        res.status(404).json({ error: "Partita non trovata" });
+        return;
+      }
+      res.json(game);
+    } catch (err) {
+      res.status(500).json({ error: `Database error during game fetch: ${err}` });
+    }
+  });
 // --- DEMO (pubblica, NO login) ---
 
-// 11. Partita demo: 3 carte iniziali + 1 situazione random
+// 12. Partita demo: 3 carte iniziali + 1 situazione random
 app.get('/api/demo', async (req, res) => {
   try {
     const result = await gameDao.getDemoCards();

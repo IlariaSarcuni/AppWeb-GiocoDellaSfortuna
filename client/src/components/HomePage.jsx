@@ -41,7 +41,7 @@ function HomePage(props) {
             <ul className="text-start d-inline-block mt-2">
               <h5 className="mb-2 mt-0">Come funziona?</h5>
               <li>Ottieni 3 carte iniziali con situazioni sfortunate.</li>
-              <li>Posiziona la nuova situazione nella giusta posizione tra le tue carte, senza vedere il suo punteggio!</li>
+              <li>Posiziona la nuova situazione nella giusta posizione tra le tue carte, senza vedere il suo indice di sfortuna!</li>
               <li>Indovina per vincere la carta. Vinci dopo aver raccolto 6 carte, perdi dopo 3 errori.</li>
               <li>
                 {!props.loggedIn

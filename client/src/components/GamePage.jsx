@@ -7,7 +7,7 @@ function sortCards(cards) {
   return [...cards].sort((a, b) => a.misfortune_index - b.misfortune_index);
 }
 
-function GamePage({ user }) {
+function GamePage(props) {
   const [loading, setLoading] = useState(false);
   const [initialCards, setInitialCards] = useState([]);
   const [situation, setSituation] = useState(null);
@@ -24,6 +24,7 @@ function GamePage({ user }) {
   const [wonCards, setWonCards] = useState([]);
   const [allCards, setAllCards] = useState([]);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
+  const [playedCards, setPlayedCards] = useState([]);
   const roundIdRef = useRef(null);
 
   const navigate = useNavigate();
@@ -91,8 +92,10 @@ function GamePage({ user }) {
   // Gestione invio risposta round
   async function handleSubmit(e, timeout = false) {
     if (e) e.preventDefault();
+    
     if (loading || !situation || situation.misfortune_index == null) {
       setFeedback({ type: "danger", msg: "La situazione non è pronta. Riprova." });
+      setPlayedCards(prev => [...prev, situation]);
       setShowResult(true);
       return;
     }
@@ -109,9 +112,10 @@ function GamePage({ user }) {
     while (pos < sorted.length && misfortuneIndex > sorted[pos].misfortune_index) pos++;
     const guessedCorrectly = !timeout && pos === chosenPos;
 
+    
     // 1. Registra il round (scrittura)
     try {
-      const round_id = await API.addRound(gameId, situation.card_id, roundNumber);
+      const { round_id } = await API.addRound(gameId, situation.card_id, roundNumber);
       roundIdRef.current = round_id;
 
       // 2. Aggiorna esito round (scrittura)
@@ -184,7 +188,7 @@ function GamePage({ user }) {
 
   // Riepilogo finale
   function handleShowSummary() {
-    navigate("/summary", { state: { gameId } });
+    navigate(`/game/${gameId}/summary`, { state: { playedCards } });
   }
 
   // Riavvia una nuova partita
@@ -286,18 +290,11 @@ function GamePage({ user }) {
   return (
     <Container className="mt-4">
       <Row>
-        <Col md={8} className="mx-auto">
-          <h2>Partita</h2>
-          {loading && (
-            <Alert variant="info">
-              <Spinner animation="border" size="sm" /> Caricamento...
-            </Alert>
-          )}
-
+        <Col md={8} className="mx-auto">          
           {!loading && (
             <>
               <div className="mb-3">
-                <strong>Le tue carte:</strong>
+                <h2>Le tue carte:</h2>
                 {renderCardList()}
               </div>
               <div>

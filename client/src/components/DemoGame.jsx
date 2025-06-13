@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Card, Alert, Form, Button, ProgressBar } from "react-bootstrap";
 import API from '../API.mjs';
+import '../index.css'; 
 
 function sortCards(cards) {
   return [...cards].sort((a, b) => a.misfortune_index - b.misfortune_index);
@@ -54,7 +55,7 @@ function DemoGame() {
   async function handleSubmit(e, timeout = false) {
     if (e) e.preventDefault();
     if (loading || !roundCard || roundCard.misfortune_index == null) {
-      setFeedback({ type: "danger", msg: "La situazione non è pronta. Ricarica la demo." });
+      setFeedback({ type: "danger", msg: "La carta non è disponibile. Ricarica la demo." });
       setShowResult(true);
       return;
     }
@@ -86,38 +87,48 @@ function DemoGame() {
   return (
     <Container className="mt-4">
       <Row>
-        <Col md={8} className="mx-auto">
-          <h2 className="text-primary">Demo: gioca un solo round!</h2>
+        <Col md={10} className="mx-auto">
+          <h2 className="mb-4">Demo: gioca un solo round!</h2>
           {loading && <Alert variant="info">Caricamento demo...</Alert>}
           {!loading && (
             <>
-              <div className="mb-3">
-                <strong>Le tue carte iniziali:</strong>
-                <Row className="mb-2">
-                  {initialCards.map((c, idx) => (
-                    <Col key={c.card_id} xs={6} md={4} className="mb-2">
-                      <Card border="primary" className="h-100">
-                        <Card.Img variant="top" src={c.image} style={{ height: 70, objectFit: "cover" }} />
-                        <Card.Body>
-                          <Card.Text style={{ fontSize: "0.9em" }}>{c.description}</Card.Text>
-                          <div className="text-center" style={{ fontSize: "1.3em", fontWeight: "bold" }}>{c.misfortune_index}</div>
-                        </Card.Body>
-                      </Card>
-                      {idx < initialCards.length - 1 && (
-                        <div className="text-center text-secondary" style={{ fontSize: "1.5em" }}>&darr;</div>
+              <Row className="justify-content-center mb-4 align-items-stretch">
+                {roundCard && (
+                  <Col xs={12} sm={6} md={4} lg={3} className="mb-3 d-flex align-items-stretch">
+                    <Card border="warning" className="card-warning h-100 w-100">
+                      {roundCard.image && (
+                        <Card.Img variant="top" src={`http://localhost:3001/${roundCard.image}`}alt={"img"} className="card-img-top"/>
                       )}
-                    </Col>
-                  ))}
-                </Row>
-              </div>
+                      <Card.Body className="text-center d-flex flex-column justify-content-center">
+                        <Card.Title className="card-title">Nuova situazione</Card.Title>
+                        <Card.Text className="fw-semibold" style={{ fontSize: "1.03rem" }}>{roundCard.description}</Card.Text>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                )}
+
+                {/* Altre carte */}
+                {initialCards.map((c, idx) => (
+                  <Col key={c.card_id} xs={12} sm={6} md={4} lg={3} className="mb-3 d-flex align-items-stretch">
+                    <Card className="card-default h-100 w-100">
+                      {c.image && (
+                        <Card.Img variant="top" src={`http://localhost:3001/${c.image}`} alt={"img"} className="card-img-top"/>
+                      )}
+                      <Card.Body>
+                        <Card.Text>{c.description}</Card.Text>
+                        <div className="misfortune-index">
+                          {c.misfortune_index}
+                        </div>
+                      </Card.Body>
+                    </Card>
+                  </Col>
+                ))}
+              </Row>
+
+              <ProgressBar now={timer * 100 / 30} label={`${timer}s`} variant={timer > 10 ? "success" : "danger"} className="mb-3" style={{ height: "12px" }}/>
+
               {roundCard && (
                 <>
-                  <Alert variant="info">
-                    <b>Nuova situazione:</b> &nbsp;
-                    <img src={roundCard.image} alt="" width={50} style={{ verticalAlign: "middle" }} /> &nbsp;
-                    <span style={{ fontWeight: 500 }}>{roundCard.description}</span>
-                  </Alert>
-                  <ProgressBar now={timer * 100 / 30} label={`${timer}s`} variant={timer > 10 ? "success" : "danger"} className="mb-3" />
                   {!showResult && (
                     <Form onSubmit={handleSubmit}>
                       <Form.Group>
@@ -127,13 +138,7 @@ function DemoGame() {
                             <Form.Check
                               inline
                               key={i}
-                              label={
-                                i === 0
-                                  ? "Prima"
-                                  : i === initialCards.length
-                                    ? "Ultima"
-                                    : `Tra ${i} e ${i + 1}`
-                              }
+                              label={ i === 0 ? "Prima" : i === initialCards.length ? "Ultima": `Tra ${i} e ${i + 1}`}
                               name="position"
                               type="radio"
                               value={i}
@@ -144,9 +149,7 @@ function DemoGame() {
                           ))}
                         </div>
                       </Form.Group>
-                      <Button type="submit" className="mt-2" disabled={showResult || loading}>
-                        Conferma
-                      </Button>
+                      <Button type="submit" className="mt-2" disabled={showResult || loading}>Conferma</Button>
                     </Form>
                   )}
                   {feedback && (

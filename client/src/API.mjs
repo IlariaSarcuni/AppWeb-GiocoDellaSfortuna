@@ -49,8 +49,10 @@ const getSituation = async (game_id) => {
   });
   if (response.ok) {
     return await response.json();
+  } else if(response.status === 404) {
+    return null;
   } else {
-    throw new Error('Errore nel recupero della situazione');
+    throw new Error('Errore nel recupero della nuova situazione');
   }
 };
 
@@ -131,7 +133,16 @@ const updateGameStatus = async (game_id, status) => {
   }
 };
 
-// 11. Partita demo (3 carte iniziali + 1 situazione random, NO login necessario)
+// 11. Recupera i dati di una partita dato l'id
+async function getGameById(game_id) {
+  const response = await fetch(`/api/game/${game_id}`, {
+    credentials: 'include'
+  });
+  if (!response.ok) throw new Error('Errore nel recupero della partita');
+  return await response.json();
+}
+
+// 12. Partita demo (3 carte iniziali + 1 situazione random, NO login necessario)
 const getDemoCards = async () => {
   const response = await fetch(`${SERVER_URL}/api/demo`);
   if (response.ok) {
@@ -197,6 +208,7 @@ const API = {
   getGamesByUser,
   getGameHistory,
   updateGameStatus,
+  getGameById,
   // Demo
   getDemoCards,
   // Auth
