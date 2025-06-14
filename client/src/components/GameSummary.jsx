@@ -59,7 +59,7 @@ function GameSummary() {
             <Card.Body>
               <Card.Title>Riepilogo partita</Card.Title>
               <Card.Text>
-                <b>ID Partita:</b> {game.game_id}<br />
+                <b>Partita n°:</b> {game.game_id}<br />
                 <b>Stato:</b> <span style={{ textTransform: "capitalize" }}>{game.status}</span><br />
                 <b>Data:</b> {game.date ? new Date(game.date).toLocaleString() : "-"}<br />
               </Card.Text>

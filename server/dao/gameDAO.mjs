@@ -21,7 +21,6 @@ function getRandomValues(arr, numValues) {
 }
 
 export default function GameDao() {
-
     // Get N random cards (excluding those in excludeIds)
     this.getRandomCards = (numCards, excludeIds = []) => {
         return new Promise((resolve, reject) => {
@@ -111,7 +110,17 @@ export default function GameDao() {
         });
     };
 
-    // Add initial cards to a game (round_number=0, guessed_correctly=1)
+    this.getOngoingGame = (user_id) => {
+        return new Promise((resolve, reject) => {
+            const query = 'SELECT * FROM games WHERE user_id = ? AND status = "ongoing" ORDER BY date DESC LIMIT 1';
+            db.get(query, [user_id], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
+        });
+    };
+
+    // Add initial cards to a game (initial_game_cards table)
     this.addInitialCards = (game_id, card_ids) => {
         return Promise.all(card_ids.map(card_id => {
             return new Promise((resolve, reject) => {
@@ -124,13 +133,13 @@ export default function GameDao() {
         }));
     };
 
-    // Get initial cards for a game
+    // Get initial cards for a game (from initial_game_cards)
     this.getInitialCards = (game_id) => {
         return new Promise((resolve, reject) => {
             const query = `
                 SELECT c.* FROM cards c
-                JOIN rounds r ON r.card_id = c.card_id
-                WHERE r.game_id = ? AND r.round_number = 0
+                JOIN initial_game_cards ic ON ic.card_id = c.card_id
+                WHERE ic.game_id = ?
                 ORDER BY c.misfortune_index ASC
             `;
             db.all(query, [game_id], (err, rows) => {
@@ -145,11 +154,9 @@ export default function GameDao() {
         return new Promise((resolve, reject) => {
             const query = 'INSERT INTO rounds (game_id, card_id, round_number, guessed_correctly, chosen_position, time) VALUES (?, ?, ?, ?, ?, ?)';
             const now = dayjs().toISOString();
-            console.log('QUERY:', query);
-            console.log('VALORI:', [game_id, card_id, round_number, 0, null, now]);
             db.run(query, [game_id, card_id, round_number, 0, null, now], function (err) {
-            if (err) reject(err);
-            else resolve(this.lastID); // round_id
+                if (err) reject(err);
+                else resolve(this.lastID); // round_id
             });
         });
     };
@@ -187,7 +194,7 @@ export default function GameDao() {
         });
     };
 
-    // Get only the IDs of the initial cards for a game (usando la tabella initial_game_cards)
+    // Get only the IDs of the initial cards for a game (using initial_game_cards)
     this.getInitialCardIds = (game_id) => {
         return new Promise((resolve, reject) => {
             const query = "SELECT card_id FROM initial_game_cards WHERE game_id = ?";
@@ -227,13 +234,13 @@ export default function GameDao() {
 
     // Ottieni i dati di una partita specifica
     this.getGameById = (game_id) => {
-    return new Promise((resolve, reject) => {
-        const query = 'SELECT * FROM games WHERE game_id = ?';
-        db.get(query, [game_id], (err, row) => {
-        if (err) reject(err);
-        else resolve(row);
+        return new Promise((resolve, reject) => {
+            const query = 'SELECT * FROM games WHERE game_id = ?';
+            db.get(query, [game_id], (err, row) => {
+                if (err) reject(err);
+                else resolve(row);
+            });
         });
-    });
     };
 
     // Get all games for a user, ordered by date desc

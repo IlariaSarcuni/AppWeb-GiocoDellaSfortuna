@@ -15,6 +15,14 @@ const getInitialCards = async (exclude = []) => {
   }
 };
 
+const getInitialCardsByGameId = async (game_id) => {
+  const response = await fetch(`${SERVER_URL}/api/game/${game_id}/init-cards`, {
+    credentials: 'include'
+  });
+  if (!response.ok) throw new Error('Errore nel recupero delle carte iniziali');
+  return await response.json();
+};
+
 // 2. Crea una nuova partita (solo autenticati)
 const createGame = async () => {
   const response = await fetch(`${SERVER_URL}/api/game`, {
@@ -136,14 +144,29 @@ const updateGameStatus = async (game_id, status) => {
 
 // 11. Recupera i dati di una partita dato l'id
 async function getGameById(game_id) {
-  const response = await fetch(`/api/game/${game_id}`, {
+  const response = await fetch(`${SERVER_URL}/api/game/${game_id}`, {
     credentials: 'include'
   });
   if (!response.ok) throw new Error('Errore nel recupero della partita');
   return await response.json();
 }
 
-// 12. Partita demo (3 carte iniziali + 1 situazione random, NO login necessario)
+// 12. Recupera la partita ongoing dell'utente (solo autenticati)
+const getOngoingGame = async () => {
+  const response = await fetch(`${SERVER_URL}/api/game/ongoing`, {
+    credentials: 'include'
+  });
+  if (response.ok) {
+    return await response.json();
+  } else if (response.status === 404) {
+    return null; // Nessuna partita ongoing trovata
+  } else {
+    throw new Error('Errore nel recupero della partita in corso');
+  }
+};
+
+
+// 13. Partita demo (3 carte iniziali + 1 situazione random, NO login necessario)
 const getDemoCards = async () => {
   const response = await fetch(`${SERVER_URL}/api/demo`);
   if (response.ok) {
@@ -200,6 +223,7 @@ const logOut = async() => {
 const API = {
   // Game
   getInitialCards,
+  getInitialCardsByGameId,
   createGame,
   saveInitialCards,
   getSituation,
@@ -209,6 +233,7 @@ const API = {
   getGamesByUser,
   getGameHistory,
   updateGameStatus,
+  getOngoingGame,
   getGameById,
   // Demo
   getDemoCards,

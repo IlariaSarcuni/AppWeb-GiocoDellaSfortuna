@@ -107,7 +107,19 @@ app.post('/api/game', isLoggedIn, async (req, res) => {
   }
 });;
 
-// 3. Salva le carte iniziali in una partita
+// 3. Recupera le carte iniziali in una partita
+app.get('/api/game/:game_id/init-cards', isLoggedIn, async (req, res) => {
+  try {
+    const game_id = req.params.game_id;
+    const cards = await gameDao.getInitialCards(game_id);
+    res.json(cards);
+  } catch (err) {
+    console.error("ERRORE getInitialCards:", err);
+    res.status(500).json({ error: `Database error during initial card retrieval: ${err}` });
+  }
+});
+
+// Salva le carte iniziali per una partita
 app.post('/api/game/:game_id/init-cards', isLoggedIn, async (req, res) => {
   try {
     const game_id = req.params.game_id;
@@ -217,6 +229,18 @@ app.put('/api/game/:game_id/status', isLoggedIn, async (req, res) => {
     res.status(200).end();
   } catch (err) {
     res.status(500).json({ error: `Database error during game status update: ${err}` });
+  }
+});
+
+// Restituisce la partita in corso per l'utente loggato
+app.get('/api/game/ongoing', isLoggedIn, async (req, res) => {
+  try {
+    const user_id = req.user.id;
+    const game = await gameDao.getOngoingGame(user_id);
+    if (game) res.json(game);
+    else res.status(404).json({error: "No ongoing game"});
+  } catch (err) {
+    res.status(500).json({error: "Database error"});
   }
 });
 
