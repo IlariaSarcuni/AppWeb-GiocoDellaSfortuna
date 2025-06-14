@@ -221,10 +221,9 @@ function GamePage(props) {
               {situation.image && (
                 <Card.Img
                   variant="top"
-                  src={situation.image}
+                  src={`http://localhost:3001/img/${situation.image}`}
                   alt="img"
                   className="card-img-top"
-                  style={{ objectFit: "cover", height: 120 }}
                 />
               )}
               <Card.Body className="text-center d-flex flex-column justify-content-center">
@@ -244,15 +243,14 @@ function GamePage(props) {
               {c.image && (
                 <Card.Img
                   variant="top"
-                  src={c.image}
+                  src={`http://localhost:3001/img/${c.image}`}
                   alt="img"
                   className="card-img-top"
-                  style={{ objectFit: "cover", height: 120 }}
                 />
               )}
               <Card.Body className="d-flex flex-column justify-content-between">
                 <Card.Text>{c.description}</Card.Text>
-                <div className="misfortune-index" style={{ fontWeight: "bold", fontSize: "1.2em" }}>
+                <div className="misfortune-index">
                   {c.misfortune_index}
                 </div>
               </Card.Body>

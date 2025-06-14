@@ -97,7 +97,7 @@ function DemoGame() {
                   <Col xs={12} sm={6} md={4} lg={3} className="mb-3 d-flex align-items-stretch">
                     <Card border="warning" className="card-warning h-100 w-100">
                       {roundCard.image && (
-                        <Card.Img variant="top" src={`http://localhost:3001/${roundCard.image}`}alt={"img"} className="card-img-top"/>
+                        <Card.Img variant="top" src={`http://localhost:3001/img/${roundCard.image}`}alt={"img"} className="card-img-top"/>
                       )}
                       <Card.Body className="text-center d-flex flex-column justify-content-center">
                         <Card.Title className="card-title">Nuova situazione</Card.Title>
@@ -112,7 +112,7 @@ function DemoGame() {
                   <Col key={c.card_id} xs={12} sm={6} md={4} lg={3} className="mb-3 d-flex align-items-stretch">
                     <Card className="card-default h-100 w-100">
                       {c.image && (
-                        <Card.Img variant="top" src={`http://localhost:3001/${c.image}`} alt={"img"} className="card-img-top"/>
+                        <Card.Img variant="top" src={`http://localhost:3001/img/${c.image}`} alt={"img"} className="card-img-top"/>
                       )}
                       <Card.Body>
                         <Card.Text>{c.description}</Card.Text>

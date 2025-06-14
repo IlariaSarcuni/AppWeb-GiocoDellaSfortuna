@@ -61,9 +61,9 @@ function GameSummary() {
               <Card.Text>
                 <b>ID Partita:</b> {game.game_id}<br />
                 <b>Stato:</b> <span style={{ textTransform: "capitalize" }}>{game.status}</span><br />
-                <b>Data inizio:</b> {game.start_time ? new Date(game.start_time).toLocaleString() : "-"}<br />
-                <b>Data fine:</b> {game.end_time ? new Date(game.end_time).toLocaleString() : "-"}<br />
+                <b>Data:</b> {game.date ? new Date(game.date).toLocaleString() : "-"}<br />
               </Card.Text>
+
               {playedCards.length > 0 && (
                 <>
                   <h5 className="mt-4">Carte giocate dall’utente:</h5>

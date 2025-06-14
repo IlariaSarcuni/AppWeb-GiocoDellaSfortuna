@@ -75,8 +75,8 @@ export default function GameDao() {
     // Create a new game
     this.addGame = (user_id) => {
         return new Promise((resolve, reject) => {
-            const query = 'INSERT INTO games (user_id, date, status) VALUES (?, datetime("now"), "ongoing")';
-            db.run(query, [user_id], function (err) {
+            const query = 'INSERT INTO games (user_id, date, status) VALUES (?, ?, ?)';
+            db.run(query, [user_id, dayjs().toISOString(), "ongoing"], function (err) {
                 if (err) {
                     reject(err);
                 } else {
