@@ -42,6 +42,7 @@ function GamePage(props) {
     // eslint-disable-next-line
   }, [timer, loading, showResult, gameOver, gameId]);
 
+  // Gestione selezione posizione
   function handlePositionChange(e) {
     setChosenPos(Number(e.target.value));
   }
@@ -61,24 +62,23 @@ function GamePage(props) {
     setAllCards([]);
 
     try {
-      // 1. Crea partita
+      // 1. Crea partita (scrittura)
       const { game_id } = await API.createGame();
       setGameId(game_id);
-      localStorage.setItem('gameId', game_id);
 
-      // 2. Ottieni 3 carte iniziali random
+      // 2. Ottieni 3 carte iniziali random (GET)
       const initCards = await API.getInitialCards();
       setInitialCards(sortCards(initCards));
       setAllCards(sortCards(initCards));
 
-      // 3. Salva carte iniziali nel DB
+      // 3. Salva carte iniziali nel DB (scrittura)
       await API.saveInitialCards(game_id, initCards.map(c => c.card_id));
 
-      // 4. Ottieni la prima situazione da indovinare
+      // 4. Ottieni la prima situazione da indovinare (GET)
       const sit = await API.getSituation(game_id);
       setSituation(sit);
 
-      // 5. Nessuna carta vinta all'inizio
+      // 5. Ottieni eventuali carte vinte (inizialmente nessuna, GET)
       setWonCards([]);
       setIsFirstLoad(false);
     } catch (err) {
@@ -87,6 +87,7 @@ function GamePage(props) {
     setLoading(false);
   }
 
+  // Gestione invio risposta round
   async function handleSubmit(e, timeout = false) {
     if (e) e.preventDefault();
 
@@ -102,35 +103,43 @@ function GamePage(props) {
     }
 
     let misfortuneIndex = situation.misfortune_index;
+
+    // Calcola posizione corretta tra le carte in possesso (allCards)
     let sorted = sortCards(allCards);
     let pos = 0;
     while (pos < sorted.length && misfortuneIndex > sorted[pos].misfortune_index) pos++;
     const guessedCorrectly = !timeout && pos === chosenPos;
 
+
+    // 1. Registra il round (scrittura)
     try {
       const { round_id } = await API.addRound(gameId, situation.card_id, roundNumber);
       roundIdRef.current = round_id;
 
+      // 2. Aggiorna esito round (scrittura)
       await API.updateRoundResult(round_id, guessedCorrectly ? 1 : 0, chosenPos);
 
+      // 3. Aggiorna stato locale
       if (guessedCorrectly) {
         setFeedback({
           type: "success",
           msg: "Complimenti, posizione corretta!",
           extra: `Indice di sfortuna: ${misfortuneIndex}`
         });
+        // Aggiungi carta vinta all'insieme di carte possedute
         const updated = sortCards([...allCards, situation]);
         setAllCards(updated);
         setNumWon((nw) => nw + 1);
 
+        // Aggiorna elenco carte vinte (GET)
         const updatedWon = await API.getWonCards(gameId);
         setWonCards(updatedWon);
 
+        // Controlla se vince la partita (6 carte)
         if (updated.length === 6) {
           await API.updateGameStatus(gameId, "win");
           setStatus("win");
           setGameOver(true);
-          localStorage.removeItem('gameId');
         }
       } else {
         setFeedback({
@@ -142,11 +151,11 @@ function GamePage(props) {
         });
         setNumLost((nl) => nl + 1);
 
+        // Controlla se perde (3 errori)
         if (numLost + 1 >= 3) {
           await API.updateGameStatus(gameId, "lose");
           setStatus("lose");
           setGameOver(true);
-          localStorage.removeItem('gameId');
         }
       }
       setShowResult(true);
@@ -156,6 +165,7 @@ function GamePage(props) {
     }
   }
 
+  // Gestisci nuovo round (handler)
   async function handleNextRound() {
     setLoading(true);
     setChosenPos(null);
@@ -164,6 +174,7 @@ function GamePage(props) {
     setShowResult(false);
 
     try {
+      // Ottieni nuova situazione da indovinare (GET)
       const sit = await API.getSituation(gameId);
       setSituation(sit);
       setRoundNumber(rn => rn + 1);
@@ -173,11 +184,14 @@ function GamePage(props) {
     setLoading(false);
   }
 
+  // Riepilogo finale
   function handleShowSummary() {
     navigate(`/game/${gameId}/summary`, { state: { playedCards } });
   }
 
+  // Riavvia una nuova partita
   function handleRestartGame() {
+    // Reset tutto e mostra bottone per nuova partita
     setGameId(null);
     setInitialCards([]);
     setSituation(null);
@@ -193,13 +207,14 @@ function GamePage(props) {
     setWonCards([]);
     setAllCards([]);
     setIsFirstLoad(true);
-    localStorage.removeItem('gameId');
   }
 
+  // Visualizza riepilogo carte possedute (iniziali + vinte) + situazione corrente come card separata
   function renderCardList() {
     const sorted = sortCards(allCards);
     return (
       <Row className="justify-content-center mb-4 align-items-stretch">
+        {/* Situazione da indovinare come card speciale, se presente */}
         {situation && (
           <Col xs={12} sm={6} md={4} lg={3} className="mb-3 d-flex align-items-stretch">
             <Card border="warning" className="card-warning h-100 w-100">
@@ -220,6 +235,8 @@ function GamePage(props) {
             </Card>
           </Col>
         )}
+
+        {/* Carte raccolte */}
         {sorted.map((c) => (
           <Col key={c.card_id} xs={12} sm={6} md={4} lg={3} className="mb-3 d-flex align-items-stretch">
             <Card className="card-default h-100 w-100">
@@ -244,6 +261,7 @@ function GamePage(props) {
     );
   }
 
+  // Messaggio di fine partita
   function renderEndMessage() {
     if (status === "win") {
       return (
@@ -268,70 +286,15 @@ function GamePage(props) {
     return null;
   }
 
-  // useEffect di avvio: partita in corso o nuova
+  // Avvia la partita appena si entra nella pagina (solo se non attiva)
   useEffect(() => {
-    async function loadGame() {
-      setLoading(true);
-
-      // 1. Prova a riprendere partita in corso da localStorage
-      const storedGameId = localStorage.getItem('gameId');
-      if (storedGameId) {
-        try {
-          const game = await API.getGameById(storedGameId);
-          if (game && game.status === "ongoing") {
-            setGameId(game.game_id);
-            setIsFirstLoad(false);
-            setLoading(false);
-            return;
-          } else {
-            localStorage.removeItem('gameId');
-          }
-        } catch {
-          localStorage.removeItem('gameId');
-        }
-      }
-
-      // 2. Chiedi al backend se esiste una partita ongoing
-      try {
-        const ongoingGame = await API.getOngoingGame();
-        if (ongoingGame) {
-          setGameId(ongoingGame.game_id);
-          localStorage.setItem('gameId', ongoingGame.game_id);
-          setIsFirstLoad(false);
-
-          // PATCH: carica le carte iniziali, le carte vinte e la situazione!
-          // 1. Carte iniziali
-          const initCards = await API.getInitialCardsByGameId(ongoingGame.game_id);
-          setInitialCards(sortCards(initCards));
-          setAllCards(sortCards(initCards));
-
-          // 2. Carte vinte
-          const won = await API.getWonCards(ongoingGame.game_id);
-          setWonCards(won);
-          setAllCards(sortCards([...initCards, ...won]));
-
-          // 3. Situazione attuale
-          const sit = await API.getSituation(ongoingGame.game_id);
-          setSituation(sit);
-
-          setLoading(false);
-          return;
-        }
-      } catch (err) {
-        // Nessuna partita in corso trovata
-      }
-
-      // 3. Nessuna partita in corso: crea una nuova partita
-      await handleStartGame();
-      setLoading(false);
-    }
-
     if (!gameId && isFirstLoad) {
-      loadGame();
+      handleStartGame();
     }
     // eslint-disable-next-line
   }, [gameId, isFirstLoad]);
 
+  // Mostra un loader se la partita sta per essere creata
   if (!gameId) {
     return (
       <Container className="mt-4 text-center">
@@ -349,6 +312,7 @@ function GamePage(props) {
     );
   }
 
+  // Altrimenti mostra la partita in corso
   return (
     <Container className="mt-4">
       <Row>
@@ -356,15 +320,17 @@ function GamePage(props) {
           {!loading && (
             <>
               <div className="mb-3">
-                <h2>Le tue carte:</h2>
+                <h2>Round n°{roundNumber}:</h2>
                 {renderCardList()}
               </div>
               <div>
                 <b>Carte raccolte: {allCards.length} / 6 &nbsp; | &nbsp; Errori: {numLost} / 3</b>
               </div>
 
+              {/* Situazione da indovinare e interazione */}
               {!gameOver && situation && (
                 <>
+                  {/* RIMOSSA LA ALERT QUI, LA SITUAZIONE È ORA SOLO NELLA CARD IN ALTO */}
                   <ProgressBar now={timer * 100 / 30} label={`${timer}s`} variant={timer > 10 ? "success" : "danger"} className="mb-3" />
                   {!showResult && (
                     <Form onSubmit={handleSubmit}>
@@ -397,6 +363,7 @@ function GamePage(props) {
                       </Button>
                     </Form>
                   )}
+                  {/* Feedback round */}
                   {feedback && showResult && (
                     <Alert variant={feedback.type} className="mt-3">
                       {feedback.msg} {feedback.extra && <div>{feedback.extra}</div>}
@@ -410,6 +377,7 @@ function GamePage(props) {
                 </>
               )}
 
+              {/* Fine partita */}
               {gameOver && renderEndMessage()}
             </>
           )}

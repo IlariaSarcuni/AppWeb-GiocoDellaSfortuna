@@ -137,24 +137,28 @@ app.post('/api/game/:game_id/init-cards', isLoggedIn, async (req, res) => {
 app.get('/api/game/:game_id/situation', isLoggedIn, async (req, res) => {
   try {
     const game_id = req.params.game_id;
+    console.log(`[SITUATION DEBUG] game_id: ${game_id}`); // LOG 1
 
-    //Prendi tutte le carte iniziali
     const initialIds = await gameDao.getInitialCardIds(game_id);
+    console.log(`[SITUATION DEBUG] initialIds from DAO: ${JSON.stringify(initialIds)}`); // LOG 2
 
-    //Prendi tutte le carte vinte (già possedute) 
     const wonCards = await gameDao.getWonCardsInGame(game_id);
     const wonIds = wonCards.map(c => c.card_id);
+    console.log(`[SITUATION DEBUG] wonIds from DAO: ${JSON.stringify(wonIds)}`); // LOG 3
 
-    //Prendi tutte le carte già usate nei round
     const usedIds = await gameDao.getUsedCardIdsInGame(game_id);
+    console.log(`[SITUATION DEBUG] usedIds from DAO: ${JSON.stringify(usedIds)}`); // LOG 4
 
-    //Unisci tutti gli id da escludere (senza duplicati)
     const excludeIds = Array.from(new Set([...initialIds, ...wonIds, ...usedIds]));
+    console.log(`[SITUATION DEBUG] FINAL excludeIds being passed to getRandomCards: ${JSON.stringify(excludeIds)}`); // LOG 5
 
-    // Pesca una carta random escludendo quelle sopra
     const cards = await gameDao.getRandomCards(1, excludeIds);
+    // Se cards[0] è una carta duplicata, confronta il suo ID con la lista excludeIds stampata sopra.
+    if (cards.length > 0) {
+        console.log(`[SITUATION DEBUG] Card chosen by getRandomCards: ${JSON.stringify(cards[0])}`); // LOG 6
+    }
 
-    //Manda la carta (o errore se nessuna disponibile)
+
     if (!cards.length) {
       res.status(404).json({ error: "Nessuna carta disponibile!" });
     } else {

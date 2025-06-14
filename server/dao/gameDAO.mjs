@@ -75,7 +75,7 @@ export default function GameDao() {
     this.addGame = (user_id) => {
         return new Promise((resolve, reject) => {
             const query = 'INSERT INTO games (user_id, date, status) VALUES (?, ?, ?)';
-            db.run(query, [user_id, dayjs().toISOString(), "ongoing"], function (err) {
+            db.run(query, [user_id, dayjs().format('YYYY-MM-DD HH:mm:ss'), "ongoing"], function (err) {
                 if (err) {
                     reject(err);
                 } else {
@@ -99,7 +99,7 @@ export default function GameDao() {
         });
     };
 
-    // Update game status (win/lose only, not ongoing)
+    /* Update game status (win/lose only, not ongoing)
     this.updateGameStatus = (game_id, status) => {
         return new Promise((resolve, reject) => {
             const query = 'UPDATE games SET status = ? WHERE game_id = ?';
@@ -108,7 +108,38 @@ export default function GameDao() {
                 else resolve();
             });
         });
+    }; */
+
+    //TEMPORANEO
+    this.updateGameStatus = (game_id, status) => {
+        return new Promise((resolve, reject) => {
+            const query = 'UPDATE games SET status = ? WHERE game_id = ?';
+            // Assicurati che game_id sia un numero se la colonna è numerica
+            const numericGameId = parseInt(game_id, 10);
+            if (isNaN(numericGameId)) {
+                console.error('[DAO updateGameStatus] game_id is NaN:', game_id);
+                return reject(new Error(`Invalid game_id format: ${game_id}`));
+            }
+
+            db.run(query, [status, numericGameId], function (err) {
+                if (err) {
+                    console.error('[DAO updateGameStatus] DB error:', err, 'for game_id:', numericGameId, 'status:', status);
+                    reject(err);
+                } else {
+                    if (this.changes > 0) {
+                        console.log('[DAO updateGameStatus] Successfully updated game_id:', numericGameId, 'to status:', status, 'Rows affected:', this.changes);
+                        resolve(); // Aggiornamento riuscito
+                    } else {
+                        // Nessuna riga modificata: game_id non trovato o lo stato era già quello.
+                        console.warn('[DAO updateGameStatus] No rows updated for game_id:', numericGameId, 'status:', status, '. Game not found or status already set.');
+                        reject(new Error(`Game with id ${numericGameId} not found, or status already ${status}. No rows updated.`));
+                    }
+                }
+            });
+        });
     };
+
+
 
     this.getOngoingGame = (user_id) => {
         return new Promise((resolve, reject) => {
