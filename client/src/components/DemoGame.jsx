@@ -152,6 +152,7 @@ function DemoGame() {
                       <Button type="submit" className="mt-2" disabled={showResult || loading}>Conferma</Button>
                     </Form>
                   )}
+                  
                   {feedback && (
                     <Alert variant={feedback.type} className="mt-3">
                       {feedback.msg} {feedback.extra && <div>{feedback.extra}</div>}

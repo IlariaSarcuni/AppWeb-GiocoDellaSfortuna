@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Container, Row, Col, Card, Alert, Form, Button, ProgressBar, Spinner } from "react-bootstrap";
-import API from "../API.mjs";
 import { useNavigate } from "react-router";
+import API from "../API.mjs";
+import '../index.css';
 
 function sortCards(cards) {
   return [...cards].sort((a, b) => a.misfortune_index - b.misfortune_index);
@@ -28,9 +29,6 @@ function GamePage(props) {
   const roundIdRef = useRef(null);
 
   const navigate = useNavigate();
-
-  // L'avvio della partita ora avviene SOLO su click utente
-  // Precarica solo dati di sola lettura se necessario (in questo caso nulla)
 
   // Aggiornamento timer round
   useEffect(() => {
@@ -92,7 +90,7 @@ function GamePage(props) {
   // Gestione invio risposta round
   async function handleSubmit(e, timeout = false) {
     if (e) e.preventDefault();
-    
+
     if (loading || !situation || situation.misfortune_index == null) {
       setFeedback({ type: "danger", msg: "La situazione non è pronta. Riprova." });
       setPlayedCards(prev => [...prev, situation]);
@@ -112,7 +110,7 @@ function GamePage(props) {
     while (pos < sorted.length && misfortuneIndex > sorted[pos].misfortune_index) pos++;
     const guessedCorrectly = !timeout && pos === chosenPos;
 
-    
+
     // 1. Registra il round (scrittura)
     try {
       const { round_id } = await API.addRound(gameId, situation.card_id, roundNumber);
@@ -211,23 +209,54 @@ function GamePage(props) {
     setIsFirstLoad(true);
   }
 
-  // Visualizza riepilogo carte possedute (iniziali + vinte)
+  // Visualizza riepilogo carte possedute (iniziali + vinte) + situazione corrente come card separata
   function renderCardList() {
     const sorted = sortCards(allCards);
     return (
-      <Row className="mb-2">
-        {sorted.map((c, idx) => (
-          <Col key={c.card_id} xs={6} md={4} className="mb-2">
-            <Card border="primary" className="h-100">
-              <Card.Img variant="top" src={c.image} style={{ height: 70, objectFit: "cover" }} />
-              <Card.Body>
-                <Card.Text style={{ fontSize: "0.9em" }}>{c.description}</Card.Text>
-                <div className="text-center" style={{ fontSize: "1.3em", fontWeight: "bold" }}>{c.misfortune_index}</div>
+      <Row className="justify-content-center mb-4 align-items-stretch">
+        {/* Situazione da indovinare come card speciale, se presente */}
+        {situation && (
+          <Col xs={12} sm={6} md={4} lg={3} className="mb-3 d-flex align-items-stretch">
+            <Card border="warning" className="card-warning h-100 w-100">
+              {situation.image && (
+                <Card.Img
+                  variant="top"
+                  src={situation.image}
+                  alt="img"
+                  className="card-img-top"
+                  style={{ objectFit: "cover", height: 120 }}
+                />
+              )}
+              <Card.Body className="text-center d-flex flex-column justify-content-center">
+                <Card.Title className="card-title">Nuova situazione</Card.Title>
+                <Card.Text className="fw-semibold" style={{ fontSize: "1.03rem" }}>
+                  {situation.description}
+                </Card.Text>
               </Card.Body>
             </Card>
-            {idx < sorted.length - 1 && (
-              <div className="text-center text-secondary" style={{ fontSize: "1.5em" }}>&darr;</div>
-            )}
+          </Col>
+        )}
+
+        {/* Carte raccolte */}
+        {sorted.map((c) => (
+          <Col key={c.card_id} xs={12} sm={6} md={4} lg={3} className="mb-3 d-flex align-items-stretch">
+            <Card className="card-default h-100 w-100">
+              {c.image && (
+                <Card.Img
+                  variant="top"
+                  src={c.image}
+                  alt="img"
+                  className="card-img-top"
+                  style={{ objectFit: "cover", height: 120 }}
+                />
+              )}
+              <Card.Body className="d-flex flex-column justify-content-between">
+                <Card.Text>{c.description}</Card.Text>
+                <div className="misfortune-index" style={{ fontWeight: "bold", fontSize: "1.2em" }}>
+                  {c.misfortune_index}
+                </div>
+              </Card.Body>
+            </Card>
           </Col>
         ))}
       </Row>
@@ -259,13 +288,12 @@ function GamePage(props) {
     return null;
   }
 
-  
   // Avvia la partita appena si entra nella pagina (solo se non attiva)
   useEffect(() => {
     if (!gameId && isFirstLoad) {
       handleStartGame();
     }
-  // eslint-disable-next-line
+    // eslint-disable-next-line
   }, [gameId, isFirstLoad]);
 
   // Mostra un loader se la partita sta per essere creata
@@ -290,7 +318,7 @@ function GamePage(props) {
   return (
     <Container className="mt-4">
       <Row>
-        <Col md={8} className="mx-auto">          
+        <Col md={8} className="mx-auto">
           {!loading && (
             <>
               <div className="mb-3">
@@ -301,14 +329,10 @@ function GamePage(props) {
                 <b>Carte raccolte: {allCards.length} / 6 &nbsp; | &nbsp; Errori: {numLost} / 3</b>
               </div>
 
-              {/* Situazione da indovinare */}
+              {/* Situazione da indovinare e interazione */}
               {!gameOver && situation && (
                 <>
-                  <Alert variant="info" className="mt-3">
-                    <b>Situzione da collocare:</b> &nbsp;
-                    <img src={situation.image} alt="" width={50} style={{ verticalAlign: "middle" }} /> &nbsp;
-                    <span style={{ fontWeight: 500 }}>{situation.description}</span>
-                  </Alert>
+                  {/* RIMOSSA LA ALERT QUI, LA SITUAZIONE È ORA SOLO NELLA CARD IN ALTO */}
                   <ProgressBar now={timer * 100 / 30} label={`${timer}s`} variant={timer > 10 ? "success" : "danger"} className="mb-3" />
                   {!showResult && (
                     <Form onSubmit={handleSubmit}>

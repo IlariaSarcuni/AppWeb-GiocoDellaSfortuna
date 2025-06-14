@@ -54,7 +54,7 @@ function HomePage(props) {
           <div className="btn-home d-flex justify-content-center gap-2">
             {!props.loggedIn && (
               <button
-                className="btn btn-primary"
+                className="btn btn-success"
                 onClick={handleDemoClick}
                 disabled={pendingDemo}
               >

@@ -159,9 +159,11 @@ app.get('/api/game/:game_id/situation', isLoggedIn, async (req, res) => {
 app.post('/api/game/:game_id/round', isLoggedIn, async (req, res) => {
   try {
     const { card_id, round_number } = req.body;
+    console.log('game_id:', req.params.game_id, 'card_id:', card_id, 'round_number:', round_number);
     const round_id = await gameDao.addRound(req.params.game_id, card_id, round_number);
     res.json({ round_id });
   } catch (err) {
+    console.error('Errore aggiunta round:', err);
     res.status(500).json({ error: `Database error during adding round: ${err}` });
   }
 });

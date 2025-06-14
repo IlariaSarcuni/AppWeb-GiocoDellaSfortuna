@@ -1,4 +1,5 @@
 import db from '../db.mjs';
+import dayjs from 'dayjs';
 import { Card, Game, Round } from '../models/Games.mjs';
 
 // Mapping functions
@@ -143,9 +144,12 @@ export default function GameDao() {
     this.addRound = (game_id, card_id, round_number) => {
         return new Promise((resolve, reject) => {
             const query = 'INSERT INTO rounds (game_id, card_id, round_number, guessed_correctly, chosen_position, time) VALUES (?, ?, ?, ?, ?, ?)';
-            db.run(query, [game_id, card_id, round_number], function (err) {
-                if (err) reject(err);
-                else resolve(this.lastID); // round_id
+            const now = dayjs().toISOString();
+            console.log('QUERY:', query);
+            console.log('VALORI:', [game_id, card_id, round_number, 0, null, now]);
+            db.run(query, [game_id, card_id, round_number, 0, null, now], function (err) {
+            if (err) reject(err);
+            else resolve(this.lastID); // round_id
             });
         });
     };

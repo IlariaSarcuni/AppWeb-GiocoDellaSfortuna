@@ -58,6 +58,7 @@ const getSituation = async (game_id) => {
 
 // 5. Aggiungi un nuovo round alla partita (solo autenticati)
 const addRound = async (game_id, card_id, round_number) => {
+  console.log({ game_id, card_id, round_number });
   const response = await fetch(`${SERVER_URL}/api/game/${game_id}/round`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
