@@ -56,7 +56,7 @@ function App() {
         <Route path="/" element={<HomePage loggedIn={loggedIn} />} />
         <Route path="/demo" element={<DemoGame />} />          
         <Route path="/game" element={loggedIn ? <GamePage user={user} /> : <Navigate replace to="/"/>} />  
-        <Route path="/game/:gameId/summary" element={loggedIn ? <GameSummary user={user} /> : <Navigate replace to="/" />}  />
+        <Route path="/game/summary" element={loggedIn ? <GameSummary user={user} /> : <Navigate replace to="/" />}  />
         <Route path="/history" element={loggedIn ? <UserHistory user={user} /> : <Navigate replace to="/"/>} />            
         <Route path="/login" element={loggedIn ? <Navigate replace to='/' /> : <LoginForm handleLogin={handleLogin}/>}/>
         <Route path="*" element={<NotFound />} />

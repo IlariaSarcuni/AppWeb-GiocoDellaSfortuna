@@ -99,7 +99,7 @@ export default function GameDao() {
         });
     };
 
-    /* Update game status (win/lose only, not ongoing)
+    // Update game status (win/lose)
     this.updateGameStatus = (game_id, status) => {
         return new Promise((resolve, reject) => {
             const query = 'UPDATE games SET status = ? WHERE game_id = ?';
@@ -108,48 +108,12 @@ export default function GameDao() {
                 else resolve();
             });
         });
-    }; */
-
-    //TEMPORANEO
-    this.updateGameStatus = (game_id, status) => {
-        return new Promise((resolve, reject) => {
-            const query = 'UPDATE games SET status = ? WHERE game_id = ?';
-            // Assicurati che game_id sia un numero se la colonna è numerica
-            const numericGameId = parseInt(game_id, 10);
-            if (isNaN(numericGameId)) {
-                console.error('[DAO updateGameStatus] game_id is NaN:', game_id);
-                return reject(new Error(`Invalid game_id format: ${game_id}`));
-            }
-
-            db.run(query, [status, numericGameId], function (err) {
-                if (err) {
-                    console.error('[DAO updateGameStatus] DB error:', err, 'for game_id:', numericGameId, 'status:', status);
-                    reject(err);
-                } else {
-                    if (this.changes > 0) {
-                        console.log('[DAO updateGameStatus] Successfully updated game_id:', numericGameId, 'to status:', status, 'Rows affected:', this.changes);
-                        resolve(); // Aggiornamento riuscito
-                    } else {
-                        // Nessuna riga modificata: game_id non trovato o lo stato era già quello.
-                        console.warn('[DAO updateGameStatus] No rows updated for game_id:', numericGameId, 'status:', status, '. Game not found or status already set.');
-                        reject(new Error(`Game with id ${numericGameId} not found, or status already ${status}. No rows updated.`));
-                    }
-                }
-            });
-        });
-    };
+    }; 
 
 
 
-    this.getOngoingGame = (user_id) => {
-        return new Promise((resolve, reject) => {
-            const query = 'SELECT * FROM games WHERE user_id = ? AND status = "ongoing" ORDER BY date DESC LIMIT 1';
-            db.get(query, [user_id], (err, row) => {
-                if (err) reject(err);
-                else resolve(row);
-            });
-        });
-    };
+
+
 
     // Add initial cards to a game (initial_game_cards table)
     this.addInitialCards = (game_id, card_ids) => {
@@ -184,8 +148,7 @@ export default function GameDao() {
     this.addRound = (game_id, card_id, round_number) => {
         return new Promise((resolve, reject) => {
             const query = 'INSERT INTO rounds (game_id, card_id, round_number, guessed_correctly, chosen_position, time) VALUES (?, ?, ?, ?, ?, ?)';
-            const now = dayjs().toISOString();
-            db.run(query, [game_id, card_id, round_number, 0, null, now], function (err) {
+            db.run(query, [game_id, card_id, round_number, 0, null, dayjs().format('YYYY-MM-DD HH:mm:ss')], function (err) {
                 if (err) reject(err);
                 else resolve(this.lastID); // round_id
             });

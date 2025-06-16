@@ -92,6 +92,7 @@ app.get('/api/game/init-cards', isLoggedIn, async (req, res) => {
     const cards = await gameDao.getRandomCards(3, usedIds);
     res.json(cards);
   } catch (err) {
+    console.error("Error in /api/game/init-cards:", err);
     res.status(500).end();
   }
 });
@@ -103,9 +104,10 @@ app.post('/api/game', isLoggedIn, async (req, res) => {
     const game_id = await gameDao.addGame(user_id);
     res.json({ game_id });
   } catch (err) {
+    console.error("Error in /api/game (POST):", err);
     res.status(500).json({ error: `Database error during game creation: ${err}` });
   }
-});;
+});
 
 // 3. Recupera le carte iniziali in una partita
 app.get('/api/game/:game_id/init-cards', isLoggedIn, async (req, res) => {
@@ -124,7 +126,7 @@ app.post('/api/game/:game_id/init-cards', isLoggedIn, async (req, res) => {
   try {
     const game_id = req.params.game_id;
     const card_ids = req.body.card_ids;
-    console.log("game_id:", game_id, "card_ids:", card_ids);
+    // console.log("game_id:", game_id, "card_ids:", card_ids); // Debugging
     await gameDao.addInitialCards(game_id, card_ids);
     res.status(201).end();
   } catch (err) {
@@ -137,27 +139,25 @@ app.post('/api/game/:game_id/init-cards', isLoggedIn, async (req, res) => {
 app.get('/api/game/:game_id/situation', isLoggedIn, async (req, res) => {
   try {
     const game_id = req.params.game_id;
-    console.log(`[SITUATION DEBUG] game_id: ${game_id}`); // LOG 1
+    // console.log(`[SITUATION DEBUG] game_id: ${game_id}`);
 
     const initialIds = await gameDao.getInitialCardIds(game_id);
-    console.log(`[SITUATION DEBUG] initialIds from DAO: ${JSON.stringify(initialIds)}`); // LOG 2
+    // console.log(`[SITUATION DEBUG] initialIds from DAO: ${JSON.stringify(initialIds)}`);
 
     const wonCards = await gameDao.getWonCardsInGame(game_id);
     const wonIds = wonCards.map(c => c.card_id);
-    console.log(`[SITUATION DEBUG] wonIds from DAO: ${JSON.stringify(wonIds)}`); // LOG 3
+    // console.log(`[SITUATION DEBUG] wonIds from DAO: ${JSON.stringify(wonIds)}`);
 
     const usedIds = await gameDao.getUsedCardIdsInGame(game_id);
-    console.log(`[SITUATION DEBUG] usedIds from DAO: ${JSON.stringify(usedIds)}`); // LOG 4
+    // console.log(`[SITUATION DEBUG] usedIds from DAO: ${JSON.stringify(usedIds)}`);
 
     const excludeIds = Array.from(new Set([...initialIds, ...wonIds, ...usedIds]));
-    console.log(`[SITUATION DEBUG] FINAL excludeIds being passed to getRandomCards: ${JSON.stringify(excludeIds)}`); // LOG 5
+    // console.log(`[SITUATION DEBUG] FINAL excludeIds being passed to getRandomCards: ${JSON.stringify(excludeIds)}`);
 
     const cards = await gameDao.getRandomCards(1, excludeIds);
-    // Se cards[0] è una carta duplicata, confronta il suo ID con la lista excludeIds stampata sopra.
-    if (cards.length > 0) {
-        console.log(`[SITUATION DEBUG] Card chosen by getRandomCards: ${JSON.stringify(cards[0])}`); // LOG 6
-    }
-
+    // if (cards.length > 0) {
+    //     console.log(`[SITUATION DEBUG] Card chosen by getRandomCards: ${JSON.stringify(cards[0])}`);
+    // }
 
     if (!cards.length) {
       res.status(404).json({ error: "Nessuna carta disponibile!" });
@@ -175,7 +175,7 @@ app.get('/api/game/:game_id/situation', isLoggedIn, async (req, res) => {
 app.post('/api/game/:game_id/round', isLoggedIn, async (req, res) => {
   try {
     const { card_id, round_number } = req.body;
-    console.log('game_id:', req.params.game_id, 'card_id:', card_id, 'round_number:', round_number);
+    // console.log('game_id:', req.params.game_id, 'card_id:', card_id, 'round_number:', round_number); // Debugging
     const round_id = await gameDao.addRound(req.params.game_id, card_id, round_number);
     res.json({ round_id });
   } catch (err) {
@@ -191,6 +191,7 @@ app.put('/api/game/round/:round_id', isLoggedIn, async (req, res) => {
     await gameDao.updateRoundResult(req.params.round_id, guessed_correctly, chosen_position);
     res.status(200).end();
   } catch (err) {
+    console.error("Error in /api/game/round/:round_id (PUT):", err);
     res.status(500).json({ error: `Database error during round update: ${err}` });
   }
 });
@@ -201,16 +202,22 @@ app.get('/api/game/:game_id/won-cards', isLoggedIn, async (req, res) => {
     const cards = await gameDao.getWonCardsInGame(req.params.game_id);
     res.json(cards);
   } catch (err) {
+    console.error("Error in /api/game/:game_id/won-cards:", err);
     res.status(500).end();
   }
 });
 
 // 8. Storico partite utente
-app.get('/api/games/user=:user_id', isLoggedIn, async (req, res) => {
+app.get('/api/game/user/:user_id', isLoggedIn, async (req, res) => { // Nota: cambiato da user=:user_id a user/:user_id per coerenza REST
   try {
+    // Assicurati che l'utente loggato possa accedere solo al proprio storico o sia un admin
+    if (req.user.id !== parseInt(req.params.user_id, 10) /* && !req.user.isAdmin */) {
+        // return res.status(403).json({ error: "Forbidden: You can only access your own game history." });
+    }
     const games = await gameDao.getGamesByUser(req.params.user_id);
     res.json(games);
   } catch (err) {
+    console.error("Error in /api/game/user/:user_id:", err);
     res.status(500).end();
   }
 });
@@ -221,6 +228,7 @@ app.get('/api/game/:game_id/history', isLoggedIn, async (req, res) => {
     const history = await gameDao.getGameHistory(req.params.game_id);
     res.json(history);
   } catch (err) {
+    console.error("Error in /api/game/:game_id/history:", err);
     res.status(500).end();
   }
 });
@@ -232,36 +240,29 @@ app.put('/api/game/:game_id/status', isLoggedIn, async (req, res) => {
     await gameDao.updateGameStatus(req.params.game_id, status);
     res.status(200).end();
   } catch (err) {
+    console.error("Error in /api/game/:game_id/status (PUT):", err);
     res.status(500).json({ error: `Database error during game status update: ${err}` });
   }
 });
 
-// Restituisce la partita in corso per l'utente loggato
-app.get('/api/game/ongoing', isLoggedIn, async (req, res) => {
+
+
+// 11. Ottieni i dati di una singola partita (detto "summary")
+app.get('/api/game/:game_id', isLoggedIn, async (req, res) => {
+  // console.log("Richiesta dati partita:", req.params.game_id); // Debugging
   try {
-    const user_id = req.user.id;
-    const game = await gameDao.getOngoingGame(user_id);
-    if (game) res.json(game);
-    else res.status(404).json({error: "No ongoing game"});
+    const game = await gameDao.getGameById(req.params.game_id);
+    if (!game) {
+      res.status(404).json({ error: "Partita non trovata" });
+      return;
+    }
+    res.json(game);
   } catch (err) {
-    res.status(500).json({error: "Database error"});
+    console.error("Error in /api/game/:game_id (GET):", err);
+    res.status(500).json({ error: `Database error during game fetch: ${err}` });
   }
 });
 
-// 11. Ottieni i dati di una singola partita (detto "summary")
-  app.get('/api/game/:game_id', isLoggedIn, async (req, res) => {
-    console.log("Richiesta dati partita:", req.params.game_id);
-    try {
-      const game = await gameDao.getGameById(req.params.game_id);
-      if (!game) {
-        res.status(404).json({ error: "Partita non trovata" });
-        return;
-      }
-      res.json(game);
-    } catch (err) {
-      res.status(500).json({ error: `Database error during game fetch: ${err}` });
-    }
-  });
 // --- DEMO (pubblica, NO login) ---
 
 // 12. Partita demo: 3 carte iniziali + 1 situazione random
@@ -270,6 +271,7 @@ app.get('/api/demo', async (req, res) => {
     const result = await gameDao.getDemoCards();
     res.json(result);
   } catch (err) {
+    console.error("Error in /api/demo:", err);
     res.status(500).end();
   }
 });
@@ -281,4 +283,3 @@ app.use((req, res) => {
 
 // --- Avvia server ---
 app.listen(port, () => { console.log(`API server started at http://localhost:${port}`); });
-

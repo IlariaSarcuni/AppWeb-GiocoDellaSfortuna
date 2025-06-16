@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { Container, Row, Col, Card, Alert, Form, Button, ProgressBar } from "react-bootstrap";
 import API from '../API.mjs';
-import '../index.css'; 
+import '../index.css';
 
 function sortCards(cards) {
   return [...cards].sort((a, b) => a.misfortune_index - b.misfortune_index);
@@ -71,11 +71,11 @@ function DemoGame() {
     const guessedCorrectly = !timeout && pos === chosenPos;
 
     if (timeout) {
-      setFeedback({ type: "danger", msg: "Tempo scaduto!", extra: `Indice di sfortuna: ${misfortuneIndex}` });
+      setFeedback({ type: "danger", msg: "Tempo scaduto!" });
     } else if (guessedCorrectly) {
       setFeedback({ type: "success", msg: "Complimenti, posizione corretta!", extra: `Indice di sfortuna: ${misfortuneIndex}` });
     } else {
-      setFeedback({ type: "danger", msg: `Errore! La posizione corretta era ${pos + 1}.`, extra: `Indice di sfortuna: ${misfortuneIndex}`});
+      setFeedback({ type: "danger", msg: "Errore! Non hai indovinato la posizione corretta." });
     }
     setShowResult(true);
   }
@@ -97,7 +97,7 @@ function DemoGame() {
                   <Col xs={12} sm={6} md={4} lg={3} className="mb-3 d-flex align-items-stretch">
                     <Card border="warning" className="card-warning h-100 w-100">
                       {roundCard.image && (
-                        <Card.Img variant="top" src={`http://localhost:3001/img/${roundCard.image}`}alt={"img"} className="card-img-top"/>
+                        <Card.Img variant="top" src={`http://localhost:3001/img/${roundCard.image}`} alt={"img"} className="card-img-top" />
                       )}
                       <Card.Body className="text-center d-flex flex-column justify-content-center">
                         <Card.Title className="card-title">Nuova situazione</Card.Title>
@@ -112,7 +112,7 @@ function DemoGame() {
                   <Col key={c.card_id} xs={12} sm={6} md={4} lg={3} className="mb-3 d-flex align-items-stretch">
                     <Card className="card-default h-100 w-100">
                       {c.image && (
-                        <Card.Img variant="top" src={`http://localhost:3001/img/${c.image}`} alt={"img"} className="card-img-top"/>
+                        <Card.Img variant="top" src={`http://localhost:3001/img/${c.image}`} alt={"img"} className="card-img-top" />
                       )}
                       <Card.Body>
                         <Card.Text>{c.description}</Card.Text>
@@ -125,7 +125,7 @@ function DemoGame() {
                 ))}
               </Row>
 
-              <ProgressBar now={timer * 100 / 30} label={`${timer}s`} variant={timer > 10 ? "success" : "danger"} className="mb-3" style={{ height: "12px" }}/>
+              <ProgressBar now={timer * 100 / 30} label={`${timer}s`} variant={timer > 10 ? "success" : "danger"} className="mb-3" style={{ height: "12px" }} />
 
               {roundCard && (
                 <>
@@ -138,7 +138,7 @@ function DemoGame() {
                             <Form.Check
                               inline
                               key={i}
-                              label={ i === 0 ? "Prima" : i === initialCards.length ? "Ultima": `Tra ${i} e ${i + 1}`}
+                              label={i === 0 ? "Prima" : i === initialCards.length ? "Ultima" : `Tra ${i} e ${i + 1}`}
                               name="position"
                               type="radio"
                               value={i}
@@ -149,20 +149,23 @@ function DemoGame() {
                           ))}
                         </div>
                       </Form.Group>
-                      <Button type="submit" className="mt-2" disabled={showResult || loading}>Conferma</Button>
+                      <Button type="submit" className="mt-3 mb-3" disabled={showResult || loading}>Conferma</Button>
                     </Form>
                   )}
-                  
+
                   {feedback && (
-                    <Alert variant={feedback.type} className="mt-3">
-                      {feedback.msg} {feedback.extra && <div>{feedback.extra}</div>}
+                    <>
+                      <Alert variant={feedback.type} className="mt-3">
+                        {feedback.msg} {feedback.extra && <div>{feedback.extra}</div>}
+                      </Alert>
+
                       {showResult && (
-                        <>
-                          <Button className="mt-3 me-2" onClick={handleReplay} disabled={loading}>Prova un'altra demo</Button>
-                          <Button className="mt-3" href="/">Torna alla home</Button>
-                        </>
+                        <div className="mt-3 mb-3"> {/* Applicato mt-3 e mb-3 */}
+                          <Button className="me-2" onClick={handleReplay} disabled={loading}>Prova un'altra demo</Button>
+                          <Button href="/">Torna alla home</Button>
+                        </div>
                       )}
-                    </Alert>
+                    </>
                   )}
                 </>
               )}

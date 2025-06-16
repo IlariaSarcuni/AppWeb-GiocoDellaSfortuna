@@ -8,8 +8,13 @@ function sortCards(cards) {
   return [...cards].sort((a, b) => a.misfortune_index - b.misfortune_index);
 }
 
+let isGameSetupInProgress = false;
+
 function GamePage(props) {
   const [loading, setLoading] = useState(false);
+  const [isCreatingGameState, setIsCreatingGameState] = useState(false);
+  const initialCardsStateRef = useRef([]);
+
   const [initialCards, setInitialCards] = useState([]);
   const [situation, setSituation] = useState(null);
   const [gameId, setGameId] = useState(null);
@@ -30,70 +35,85 @@ function GamePage(props) {
 
   const navigate = useNavigate();
 
-  // Aggiornamento timer round
   useEffect(() => {
-    if (loading || showResult || gameOver || !gameId) return;
+    if (loading || showResult || gameOver || !gameId || isCreatingGameState) return;
     if (timer <= 0) {
       handleSubmit(null, true);
       return;
     }
     const t = setTimeout(() => setTimer((old) => old - 1), 1000);
     return () => clearTimeout(t);
-    // eslint-disable-next-line
-  }, [timer, loading, showResult, gameOver, gameId]);
+  }, [timer, loading, showResult, gameOver, gameId, isCreatingGameState]);
 
-  // Gestione selezione posizione
   function handlePositionChange(e) {
     setChosenPos(Number(e.target.value));
   }
 
-  // Avvia una nuova partita (handler per il bottone)
   async function handleStartGame() {
+    if (isGameSetupInProgress) {
+      console.log('[handleStartGame] Creazione partita GIA\' IN CORSO (modulo lock), esco.');
+      return;
+    }
+
+    console.log('[handleStartGame] INIZIO');
+    isGameSetupInProgress = true;
+    setIsCreatingGameState(true);
     setLoading(true);
+
     setGameOver(false);
     setStatus("ongoing");
     setFeedback(null);
     setTimer(30);
     setShowResult(false);
     setRoundNumber(1);
+    setChosenPos(null);
     setNumWon(0);
     setNumLost(0);
     setWonCards([]);
     setAllCards([]);
+    setGameId(null);
 
     try {
-      // 1. Crea partita (scrittura)
+      console.log('[handleStartGame] Chiamo API.createGame()');
       const { game_id } = await API.createGame();
+      console.log('[handleStartGame] API.createGame() restituito, game_id:', game_id);
       setGameId(game_id);
 
-      // 2. Ottieni 3 carte iniziali random (GET)
-      const initCards = await API.getInitialCards();
-      setInitialCards(sortCards(initCards));
-      setAllCards(sortCards(initCards));
+      const initCardsData = await API.getInitialCards();
+      const sortedInitCards = sortCards(initCardsData);
+      setInitialCards(sortedInitCards);
+      setAllCards(sortedInitCards);
+      initialCardsStateRef.current = sortedInitCards;
 
-      // 3. Salva carte iniziali nel DB (scrittura)
-      await API.saveInitialCards(game_id, initCards.map(c => c.card_id));
+      await API.saveInitialCards(game_id, initCardsData.map(c => c.card_id));
+      console.log('[handleStartGame] Carte iniziali salvate per game_id:', game_id);
 
-      // 4. Ottieni la prima situazione da indovinare (GET)
       const sit = await API.getSituation(game_id);
       setSituation(sit);
-
-      // 5. Ottieni eventuali carte vinte (inizialmente nessuna, GET)
+      console.log('[handleStartGame] Situazione ottenuta per game_id:', game_id);
+      
       setWonCards([]);
       setIsFirstLoad(false);
-    } catch (err) {
-      setFeedback({ type: "danger", msg: "Errore durante la creazione della partita. Riprova." });
-    }
-    setLoading(false);
-  }
+      console.log('[handleStartGame] isFirstLoad impostato a false');
 
-  // Gestione invio risposta round
+    } catch (err) {
+      console.error("[handleStartGame] Errore durante la creazione della partita:", err);
+      setFeedback({ type: "danger", msg: `Errore creazione partita: ${err.message || err}` });
+      setGameId(null); 
+    } finally {
+      isGameSetupInProgress = false;
+      setIsCreatingGameState(false);
+      setLoading(false);
+      console.log('[handleStartGame] FINE. isGameSetupInProgress:', isGameSetupInProgress);
+    }
+  }
+  
   async function handleSubmit(e, timeout = false) {
     if (e) e.preventDefault();
 
     if (loading || !situation || situation.misfortune_index == null) {
       setFeedback({ type: "danger", msg: "La situazione non è pronta. Riprova." });
-      setPlayedCards(prev => [...prev, situation]);
+      if (situation) setPlayedCards(prev => [...prev, situation]);
       setShowResult(true);
       return;
     }
@@ -103,39 +123,30 @@ function GamePage(props) {
     }
 
     let misfortuneIndex = situation.misfortune_index;
-
-    // Calcola posizione corretta tra le carte in possesso (allCards)
     let sorted = sortCards(allCards);
     let pos = 0;
     while (pos < sorted.length && misfortuneIndex > sorted[pos].misfortune_index) pos++;
     const guessedCorrectly = !timeout && pos === chosenPos;
 
-
-    // 1. Registra il round (scrittura)
     try {
       const { round_id } = await API.addRound(gameId, situation.card_id, roundNumber);
       roundIdRef.current = round_id;
 
-      // 2. Aggiorna esito round (scrittura)
       await API.updateRoundResult(round_id, guessedCorrectly ? 1 : 0, chosenPos);
 
-      // 3. Aggiorna stato locale
       if (guessedCorrectly) {
         setFeedback({
           type: "success",
           msg: "Complimenti, posizione corretta!",
           extra: `Indice di sfortuna: ${misfortuneIndex}`
         });
-        // Aggiungi carta vinta all'insieme di carte possedute
         const updated = sortCards([...allCards, situation]);
         setAllCards(updated);
         setNumWon((nw) => nw + 1);
 
-        // Aggiorna elenco carte vinte (GET)
         const updatedWon = await API.getWonCards(gameId);
         setWonCards(updatedWon);
 
-        // Controlla se vince la partita (6 carte)
         if (updated.length === 6) {
           await API.updateGameStatus(gameId, "win");
           setStatus("win");
@@ -146,12 +157,10 @@ function GamePage(props) {
           type: timeout ? "danger" : "danger",
           msg: timeout
             ? "Tempo scaduto!"
-            : `Errore! La posizione corretta era ${pos + 1}.`,
-          extra: `Indice di sfortuna: ${misfortuneIndex}`
+            : "Errore! Non hai indovinato la posizione corretta."
         });
         setNumLost((nl) => nl + 1);
 
-        // Controlla se perde (3 errori)
         if (numLost + 1 >= 3) {
           await API.updateGameStatus(gameId, "lose");
           setStatus("lose");
@@ -165,7 +174,6 @@ function GamePage(props) {
     }
   }
 
-  // Gestisci nuovo round (handler)
   async function handleNextRound() {
     setLoading(true);
     setChosenPos(null);
@@ -174,47 +182,35 @@ function GamePage(props) {
     setShowResult(false);
 
     try {
-      // Ottieni nuova situazione da indovinare (GET)
       const sit = await API.getSituation(gameId);
       setSituation(sit);
       setRoundNumber(rn => rn + 1);
-    } catch (err) {
+    } catch (err) { 
       setFeedback({ type: "danger", msg: "Errore nel caricamento della situazione. Riprova." });
     }
     setLoading(false);
   }
 
-  // Riepilogo finale
   function handleShowSummary() {
-    navigate(`/game/${gameId}/summary`, { state: { playedCards } });
+    navigate(`/game/summary`, { state: { gameId: gameId, playedCards: playedCards } });
   }
 
-  // Riavvia una nuova partita
-  function handleRestartGame() {
-    // Reset tutto e mostra bottone per nuova partita
-    setGameId(null);
-    setInitialCards([]);
-    setSituation(null);
-    setChosenPos(null);
-    setFeedback(null);
-    setTimer(30);
-    setShowResult(false);
-    setRoundNumber(1);
-    setNumWon(0);
-    setNumLost(0);
-    setGameOver(false);
-    setStatus("ongoing");
-    setWonCards([]);
-    setAllCards([]);
-    setIsFirstLoad(true);
-  }
+  useEffect(() => {
+    console.log('[useEffect] Eseguito. gameId:', gameId, 'isFirstLoad:', isFirstLoad, 'isCreatingGameState:', isCreatingGameState);
+    if (!gameId && isFirstLoad && !isGameSetupInProgress) {
+      console.log('[useEffect] Condizione VERA (!gameId && isFirstLoad && !isGameSetupInProgress), chiamo handleStartGame');
+      handleStartGame();
+    } else {
+      console.log('[useEffect] Condizione FALSA o setup già in corso.');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameId, isFirstLoad]);
 
-  // Visualizza riepilogo carte possedute (iniziali + vinte) + situazione corrente come card separata
+
   function renderCardList() {
     const sorted = sortCards(allCards);
     return (
       <Row className="justify-content-center mb-4 align-items-stretch">
-        {/* Situazione da indovinare come card speciale, se presente */}
         {situation && (
           <Col xs={12} sm={6} md={4} lg={3} className="mb-3 d-flex align-items-stretch">
             <Card border="warning" className="card-warning h-100 w-100">
@@ -235,8 +231,6 @@ function GamePage(props) {
             </Card>
           </Col>
         )}
-
-        {/* Carte raccolte */}
         {sorted.map((c) => (
           <Col key={c.card_id} xs={12} sm={6} md={4} lg={3} className="mb-3 d-flex align-items-stretch">
             <Card className="card-default h-100 w-100">
@@ -261,76 +255,65 @@ function GamePage(props) {
     );
   }
 
-  // Messaggio di fine partita
   function renderEndMessage() {
     if (status === "win") {
       return (
-        <Alert variant="success" className="mt-3">
-          <h4>Hai vinto!</h4>
-          <p>Hai raccolto tutte le 6 carte!</p>
-          <Button className="me-2" onClick={handleShowSummary}>Vedi riepilogo</Button>
-          <Button variant="secondary" onClick={handleRestartGame}>Nuova partita</Button>
-        </Alert>
+        <>
+          <Alert variant="success" className="mt-3">
+            <h4>Hai vinto!</h4>
+            <p>Hai raccolto tutte le 6 carte!</p>
+          </Alert>
+          <div className="mt-3">
+            <Button className="me-2" onClick={handleShowSummary}>Vedi riepilogo</Button>
+          </div>
+        </>
       );
     }
     if (status === "lose") {
       return (
-        <Alert variant="danger" className="mt-3">
-          <h4>Partita persa!</h4>
-          <p>Hai commesso 3 errori. Riprova!</p>
-          <Button className="me-2" onClick={handleShowSummary}>Vedi riepilogo</Button>
-          <Button variant="secondary" onClick={handleRestartGame}>Nuova partita</Button>
-        </Alert>
+        <>
+          <Alert variant="danger" className="mt-3">
+            <h4>Partita persa!</h4>
+            <p>Hai commesso 3 errori. Riprova!</p>
+          </Alert>
+          <div className="mt-3 mb-3">
+            <Button className="me-2" onClick={handleShowSummary}>Vedi riepilogo</Button>
+          </div>
+        </>
       );
     }
     return null;
   }
-
-  // Avvia la partita appena si entra nella pagina (solo se non attiva)
-  useEffect(() => {
-    if (!gameId && isFirstLoad) {
-      handleStartGame();
-    }
-    // eslint-disable-next-line
-  }, [gameId, isFirstLoad]);
-
-  // Mostra un loader se la partita sta per essere creata
-  if (!gameId) {
-    return (
-      <Container className="mt-4 text-center">
-        <Row>
-          <Col>
-            <Spinner animation="border" size="lg" />
-            {feedback && (
-              <Alert variant={feedback.type} className="mt-3">
-                {feedback.msg}
-              </Alert>
-            )}
-          </Col>
-        </Row>
-      </Container>
-    );
+  
+  if (isFirstLoad && isCreatingGameState) { 
+      return (
+          <Container className="text-center mt-5">
+              <Spinner animation="border" role="status">
+                  <span className="visually-hidden">Creazione partita in corso...</span>
+              </Spinner>
+              <p>Creazione partita in corso...</p>
+          </Container>
+      );
   }
 
-  // Altrimenti mostra la partita in corso
   return (
-    <Container className="mt-4">
-      <Row>
-        <Col md={8} className="mx-auto">
-          {!loading && (
+    <Container className="mt-3 mb-3">
+      {gameId && !loading && (
+        <Row>
+          <Col md={8} className="mx-auto">
             <>
               <div className="mb-3">
                 <h2>Round n°{roundNumber}:</h2>
                 {renderCardList()}
               </div>
               <div>
-                <b>Carte raccolte: {allCards.length} / 6 &nbsp; | &nbsp; Errori: {numLost} / 3</b>
+                <p className="fw-bold fs-4">
+                  Carte raccolte: {allCards.length} / 6 &nbsp; | &nbsp; Errori: {numLost} / 3
+                </p>
               </div>
 
-              {/* Situazione da indovinare e interazione */}
               {!gameOver && situation && (
                 <>
-                  {/* RIMOSSA LA ALERT QUI, LA SITUAZIONE È ORA SOLO NELLA CARD IN ALTO */}
                   <ProgressBar now={timer * 100 / 30} label={`${timer}s`} variant={timer > 10 ? "success" : "danger"} className="mb-3" />
                   {!showResult && (
                     <Form onSubmit={handleSubmit}>
@@ -358,31 +341,32 @@ function GamePage(props) {
                           ))}
                         </div>
                       </Form.Group>
-                      <Button type="submit" className="mt-2" disabled={showResult || loading}>
+                      <Button type="submit" className="mt-3 mb-3" disabled={showResult || loading}>
                         Conferma
                       </Button>
                     </Form>
                   )}
-                  {/* Feedback round */}
+                  
                   {feedback && showResult && (
-                    <Alert variant={feedback.type} className="mt-3">
-                      {feedback.msg} {feedback.extra && <div>{feedback.extra}</div>}
+                    <>
+                      <Alert variant={feedback.type} className="mt-3">
+                        {feedback.msg} {feedback.extra && <div>{feedback.extra}</div>}
+                      </Alert>
                       {!gameOver && (
-                        <Button className="mt-3" onClick={handleNextRound} disabled={loading}>
+                        <Button className="mt-2 mb-3" onClick={handleNextRound} disabled={loading}>
                           Prossimo round
                         </Button>
                       )}
-                    </Alert>
+                    </>
                   )}
                 </>
               )}
-
-              {/* Fine partita */}
               {gameOver && renderEndMessage()}
             </>
-          )}
-        </Col>
-      </Row>
+          </Col>
+        </Row>
+      )}
+      {loading && !isCreatingGameState && <Container className="text-center mt-5"><Spinner animation="border" /><p>Caricamento...</p></Container>}
     </Container>
   );
 }

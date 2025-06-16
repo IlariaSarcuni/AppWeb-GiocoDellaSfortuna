@@ -107,7 +107,7 @@ const getWonCards = async (game_id) => {
 
 // 8. Ottieni storico delle partite di un utente (solo autenticati)
 const getGamesByUser = async (user_id) => {
-  const response = await fetch(`${SERVER_URL}/api/games/user=${user_id}`, {
+  const response = await fetch(`${SERVER_URL}/api/game/user=${user_id}`, {
     credentials: 'include'
   });
   if (response.ok) {
@@ -151,19 +151,8 @@ async function getGameById(game_id) {
   return await response.json();
 }
 
-// 12. Recupera la partita ongoing dell'utente (solo autenticati)
-const getOngoingGame = async () => {
-  const response = await fetch(`${SERVER_URL}/api/game/ongoing`, {
-    credentials: 'include'
-  });
-  if (response.ok) {
-    return await response.json();
-  } else if (response.status === 404) {
-    return null; // Nessuna partita ongoing trovata
-  } else {
-    throw new Error('Errore nel recupero della partita in corso');
-  }
-};
+
+
 
 
 // 13. Partita demo (3 carte iniziali + 1 situazione random, NO login necessario)
@@ -233,7 +222,6 @@ const API = {
   getGamesByUser,
   getGameHistory,
   updateGameStatus,
-  getOngoingGame,
   getGameById,
   // Demo
   getDemoCards,
@@ -244,4 +232,3 @@ const API = {
 };
 
 export default API;
-
