@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Container, Row, Col, Card, Alert, Form, Button, ProgressBar, Spinner } from "react-bootstrap";
 import { useNavigate } from "react-router";
 import API from "../API.mjs";
@@ -13,8 +13,6 @@ let isGameSetupInProgress = false;
 function GamePage(props) {
   const [loading, setLoading] = useState(false);
   const [isCreatingGameState, setIsCreatingGameState] = useState(false);
-  const initialCardsStateRef = useRef([]);
-
   const [initialCards, setInitialCards] = useState([]);
   const [situation, setSituation] = useState(null);
   const [gameId, setGameId] = useState(null);
@@ -31,8 +29,6 @@ function GamePage(props) {
   const [allCards, setAllCards] = useState([]);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [playedCards, setPlayedCards] = useState([]);
-  const roundIdRef = useRef(null);
-
   const navigate = useNavigate();
 
   useEffect(() => {
