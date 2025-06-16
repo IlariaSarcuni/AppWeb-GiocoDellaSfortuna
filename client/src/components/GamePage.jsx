@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect } from "react"; // Rimosso useRef se non più usato altrove, altrimenti lascialo
 import { Container, Row, Col, Card, Alert, Form, Button, ProgressBar, Spinner } from "react-bootstrap";
 import { useNavigate } from "react-router";
 import API from "../API.mjs";
@@ -13,6 +13,8 @@ let isGameSetupInProgress = false;
 function GamePage(props) {
   const [loading, setLoading] = useState(false);
   const [isCreatingGameState, setIsCreatingGameState] = useState(false);
+  // Rimosso: const initialCardsStateRef = useRef([]);
+
   const [initialCards, setInitialCards] = useState([]);
   const [situation, setSituation] = useState(null);
   const [gameId, setGameId] = useState(null);
@@ -29,6 +31,8 @@ function GamePage(props) {
   const [allCards, setAllCards] = useState([]);
   const [isFirstLoad, setIsFirstLoad] = useState(true);
   const [playedCards, setPlayedCards] = useState([]);
+  // Rimosso: const roundIdRef = useRef(null);
+
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -75,7 +79,7 @@ function GamePage(props) {
       const sortedInitCards = sortCards(initCardsData);
       setInitialCards(sortedInitCards);
       setAllCards(sortedInitCards);
-      initialCardsStateRef.current = sortedInitCards;
+      // Rimosso: initialCardsStateRef.current = sortedInitCards;
 
       await API.saveInitialCards(game_id, initCardsData.map(c => c.card_id));
 
@@ -119,7 +123,7 @@ function GamePage(props) {
 
     try {
       const { round_id } = await API.addRound(gameId, situation.card_id, roundNumber);
-      roundIdRef.current = round_id;
+      // Rimosso: roundIdRef.current = round_id;
 
       await API.updateRoundResult(round_id, guessedCorrectly ? 1 : 0, chosenPos);
 
@@ -190,7 +194,7 @@ function GamePage(props) {
       handleStartGame();
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId, isFirstLoad]); 
+  }, [gameId, isFirstLoad, feedback]); // Modificato: aggiunto feedback alle dipendenze
 
 
   function renderCardList() {
@@ -283,21 +287,7 @@ function GamePage(props) {
       );
   }
 
-  // Se la creazione della partita è fallita (gameId è null e c'è un feedback di errore)
-  // e non siamo nel mezzo di un tentativo di creazione.
-  if (!gameId && feedback && feedback.type === 'danger' && !isCreatingGameState) {
-    return (
-      <Container className="text-center mt-5">
-        <Alert variant="danger">{feedback.msg}</Alert>
-        <Button onClick={() => {
-          // Non serve setFeedback(null) qui perché handleStartGame lo farà o lo sovrascriverà
-          handleStartGame(); 
-        }} className="mt-3">
-          Riprova a iniziare una nuova partita
-        </Button>
-      </Container>
-    );
-  }
+  
 
   return (
     <Container className="mt-3 mb-3">
