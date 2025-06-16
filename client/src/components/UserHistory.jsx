@@ -1,182 +1,260 @@
-import React, { useEffect, useState } from 'react'; // useContext se usi AuthContext
-import API from '../API.mjs'; // Assicurati che il percorso sia corretto
-import { Container, Row, Col, Card, Spinner, Alert, Accordion, ListGroup, Badge, Image } from 'react-bootstrap';
-// import AuthContext from '../contexts/AuthContext'; // Esempio se usi un contesto per l'utente
+import React, { useState, useEffect } from 'react';
+import { Container, Row, Col, Alert, Button, Table } from 'react-bootstrap'; // Rimosso Spinner dall'import
+import { Link } from 'react-router';
+import API from '../API.mjs';
+import dayjs from 'dayjs';
 
-// Funzione helper per formattare la data
-const formatDate = (dateString) => {
-  if (!dateString) return "Data non disponibile";
-  return new Date(dateString).toLocaleString('it-IT', {
-    year: 'numeric', month: 'long', day: 'numeric',
-    hour: '2-digit', minute: '2-digit'
-  });
-};
-
-// Componente per una singola carta nella cronologia
-function HistoryCardItem({ card, isInitial }) {
-  let cardBorder = "secondary";
-  let roundInfo = null;
-
-  if (!isInitial) {
-    cardBorder = card.guessed_correctly === 1 ? "success" : (card.guessed_correctly === 0 ? "danger" : "secondary");
-    roundInfo = (
-      <>
-        Round {card.round_number}:
-        <Badge pill bg={cardBorder} className="ms-2">
-          {card.guessed_correctly === 1 ? "Indovinata" : (card.guessed_correctly === 0 ? "Sbagliata" : "N/A")}
-        </Badge>
-      </>
-    );
-  } else {
-    roundInfo = <Badge bg="info" pill>Carta Iniziale</Badge>;
-  }
-
-  return (
-    <ListGroup.Item className="d-flex justify-content-between align-items-start p-2">
-      <Row className="w-100 align-items-center">
-        <Col xs={3} md={2} className="text-center">
-          {card.image && (
-            <Image
-              src={`http://localhost:3001/img/${card.image}`}
-              alt={card.description ? card.description.substring(0, 20) : 'Immagine carta'}
-              rounded
-              style={{ maxHeight: '60px', maxWidth: '100%', objectFit: 'contain' }}
-            />
-          )}
-        </Col>
-        <Col xs={9} md={7}>
-          <div className="fw-bold" style={{fontSize: '0.9rem'}}>{card.description}</div>
-          {card.misfortune_index !== undefined && 
-            <div style={{fontSize: '0.8rem'}}>Indice Sfortuna: {card.misfortune_index}</div>
-          }
-        </Col>
-        <Col xs={12} md={3} className="text-md-end mt-2 mt-md-0">
-          <div style={{fontSize: '0.85rem'}}>{roundInfo}</div>
-        </Col>
-      </Row>
-    </ListGroup.Item>
-  );
-}
-
-
-function UserHistory({ currentUser }) { // currentUser passato come prop
-  // const { currentUser } = useContext(AuthContext); // Alternativa
-  const [gamesHistory, setGamesHistory] = useState([]);
-  const [loading, setLoading] = useState(true);
+function UserHistory(props) {
+  const [gamesList, setGamesList] = useState([]);
+  const [loadingGamesList, setLoadingGamesList] = useState(true); // Mantenuto per la logica condizionale
   const [error, setError] = useState(null);
+  const [currentUser, setCurrentUser] = useState(props.user);
+
+  const [expandedGameDetails, setExpandedGameDetails] = useState({});
+  const [loadingDetailsForGame, setLoadingDetailsForGame] = useState(null); // Mantenuto per disabilitare il bottone
 
   useEffect(() => {
-    if (!currentUser || !currentUser.id) {
-      setError("Utente non autenticato o ID utente non disponibile.");
-      setLoading(false);
+    if (!currentUser && props.loggedIn) {
+      API.getUserInfo()
+        .then(user => setCurrentUser(user))
+        .catch(err => {
+          console.error("Errore recupero utente:", err);
+          setError("Impossibile recuperare le informazioni dell'utente.");
+          setLoadingGamesList(false);
+        });
+    } else if (!props.loggedIn && !currentUser) {
+      setLoadingGamesList(false);
+    }
+  }, [currentUser, props.user, props.loggedIn]);
+
+  useEffect(() => {
+    if (currentUser && currentUser.id) {
+      setLoadingGamesList(true);
+      setError(null);
+      API.getGamesByUser(currentUser.id)
+        .then((gamesData) => {
+          setGamesList(gamesData);
+        })
+        .catch(err => {
+          setError("Errore nel recupero della cronologia partite.");
+          console.error(err);
+          setGamesList([]);
+        })
+        .finally(() => {
+          setLoadingGamesList(false);
+        });
+    } else if (!currentUser && !props.loggedIn) {
+        setGamesList([]);
+        setLoadingGamesList(false);
+    }
+  }, [currentUser, props.loggedIn]);
+
+  const toggleGameDetails = async (gameId) => {
+    const currentDetailState = expandedGameDetails[gameId];
+
+    if (currentDetailState?.visible) {
+      setExpandedGameDetails(prev => ({ ...prev, [gameId]: { ...currentDetailState, visible: false } }));
       return;
     }
 
-    async function fetchUserGamesHistory() {
-      setLoading(true);
-      setError(null);
-      try {
-        // 1. Ottieni l'elenco base delle partite
-        const userGames = await API.getGamesByUser(currentUser.id);
-
-        // 2. Per ogni partita, recupera dettagli e calcola carte raccolte
-        const detailedGamesHistory = await Promise.all(
-          userGames.map(async (game) => {
-            try {
-              const roundsHistory = await API.getGameHistory(game.game_id);
-              const initialCards = await API.getInitialCardsByGameId(game.game_id);
-
-              // Calcolo del numero totale di carte raccolte (nel frontend)
-              const initialCardIds = initialCards.map(c => c.card_id);
-              const wonCardIdsInRounds = roundsHistory
-                .filter(r => r.guessed_correctly === 1 && r.round_number > 0) // round_number > 0 per escludere "carte iniziali" se mai avessero round_number 0
-                .map(r => r.card_id);
-              
-              const collectedCardIds = new Set([...initialCardIds, ...wonCardIdsInRounds]);
-              const collected_card_count = collectedCardIds.size;
-
-              return {
-                ...game, // game_id, user_id, date, status
-                rounds: roundsHistory,
-                initialCards: initialCards,
-                collected_card_count: collected_card_count, // Aggiunto il conteggio calcolato
-              };
-            } catch (gameDetailError) {
-              console.error(`Errore nel recuperare dettagli per la partita ${game.game_id}:`, gameDetailError);
-              return { ...game, rounds: [], initialCards: [], collected_card_count: 'N/D', errorLoadingDetails: true };
-            }
-          })
-        );
-        setGamesHistory(detailedGamesHistory);
-      } catch (err) {
-        console.error("Errore nel recuperare la cronologia delle partite dell'utente:", err);
-        setError("Impossibile caricare la cronologia delle partite.");
-      }
-      setLoading(false);
+    if (currentDetailState?.data && !currentDetailState.visible) {
+       setExpandedGameDetails(prev => ({ ...prev, [gameId]: { ...currentDetailState, visible: true } }));
+       return;
     }
 
-    fetchUserGamesHistory();
-  }, [currentUser]);
+    setLoadingDetailsForGame(gameId);
 
+    try {
+      const roundsData = await API.getGameHistory(gameId);
+      const initialCardsData = await API.getInitialCardsByGameId(gameId);
+      const wonRoundsCount = roundsData.filter(r => r.guessed_correctly).length;
+      const totalCollectedInDetails = initialCardsData.length + wonRoundsCount;
 
-  if (loading) {
-    return <Container className="mt-4 text-center"><Spinner animation="border" role="status"><span className="visually-hidden">Caricamento...</span></Spinner></Container>;
+      setExpandedGameDetails(prev => ({
+        ...prev,
+        [gameId]: {
+          data: {
+            initial_cards: initialCardsData,
+            rounds: roundsData,
+            total_cards_collected: totalCollectedInDetails,
+          },
+          visible: true,
+          error: null,
+        },
+      }));
+    } catch (err) {
+      console.error(`Errore nel caricamento dei dettagli espansi per la partita ${gameId}:`, err);
+      setExpandedGameDetails(prev => ({
+        ...prev,
+        [gameId]: { data: null, visible: true, error: "Dettagli non disponibili per questa partita." },
+      }));
+    } finally {
+      setLoadingDetailsForGame(null);
+    }
+  };
+
+  // Rimosso il blocco di caricamento iniziale con Spinner
+  // if (loadingGamesList && !gamesList.length) {
+  //   return <Container className="text-center mt-5"><Spinner animation="border" /> <p>Caricamento cronologia...</p></Container>;
+  // }
+
+  if (!props.loggedIn && !currentUser) {
+    return (
+      <Container className="mt-4">
+        <Alert variant="warning">
+          Devi effettuare il login per visualizzare il tuo profilo e la cronologia delle partite.
+        </Alert>
+        <Row className="mt-3">
+          <Col className="text-center">
+            <Link to="/">
+              <Button variant="secondary">Torna alla Home</Button>
+            </Link>
+          </Col>
+        </Row>
+      </Container>
+    );
   }
-
-  if (error) {
-    return <Container className="mt-4"><Alert variant="danger">{error}</Alert></Container>;
-  }
-
-  if (!gamesHistory.length) {
-    return <Container className="mt-4"><Alert variant="info">Non hai ancora nessuna partita completata nella tua cronologia.</Alert></Container>;
+  
+  if (error && !gamesList.length && !loadingGamesList) { // Aggiunto !loadingGamesList per evitare flash di errore durante il caricamento iniziale
+    return (
+      <Container className="mt-4">
+        <Alert variant="danger">{error}</Alert>
+        <Row className="mt-3">
+          <Col className="text-center">
+            <Link to="/">
+              <Button variant="secondary">Torna alla Home</Button>
+            </Link>
+          </Col>
+        </Row>
+      </Container>
+    );
   }
 
   return (
-    <Container className="mt-5 mb-5">
+    <Container className="mt-4 mb-5">
+      <Row className="mb-3">
+        <Col>
+          <Link to="/">
+            <Button variant="secondary">Torna alla Home</Button>
+          </Link>
+        </Col>
+      </Row>
       <Row>
         <Col md={10} lg={9} className="mx-auto">
-          <h2 className="text-center mb-4">Cronologia Partite di {currentUser.name || `Utente ${currentUser.id}`}</h2>
-          <Accordion flush> {/* Rimosso defaultActiveKey per non aprire il primo automaticamente */}
-            {gamesHistory.map((game, index) => (
-              <Accordion.Item eventKey={String(index)} key={game.game_id}>
-                <Accordion.Header>
-                  <div className="d-flex justify-content-between w-100 pe-2">
-                    <span>Partita del {formatDate(game.date)}</span>
-                    <Badge pill bg={game.status === 'win' ? 'success' : (game.status === 'lose' ? 'danger' : 'secondary')}>
-                      {game.status === 'win' ? 'Vinta' : (game.status === 'lose' ? 'Persa' : game.status)}
-                    </Badge>
-                  </div>
-                </Accordion.Header>
-                <Accordion.Body>
-                  <Card>
-                    <Card.Body>
-                      <Card.Text className="mb-1">
-                        <strong>Esito:</strong> {game.status === 'win' ? 'Vittoria' : (game.status === 'lose' ? 'Sconfitta' : game.status)}
-                      </Card.Text>
-                      <Card.Text className="mb-3">
-                        <strong>Carte Raccolte Totali:</strong> {game.collected_card_count}
-                      </Card.Text>
-                      
-                      {game.errorLoadingDetails && <Alert variant="warning">Dettagli carte non completamente caricati per questa partita.</Alert>}
+          <h2>Profilo Utente</h2>
+          {currentUser && <p className="lead">Benvenuto/a, {currentUser.name || currentUser.email}!</p>}
+          <hr />
+          <h3 className="mt-4 mb-3">Cronologia Partite</h3>
+          {error && <Alert variant="danger" className="mb-2">{error}</Alert>}
 
-                      <h5 className="mt-3 mb-2" style={{fontSize: '1.1rem'}}>Carte Coinvolte:</h5>
-                      <ListGroup variant="flush">
-                        {game.initialCards && game.initialCards.map(card => (
-                          <HistoryCardItem key={`initial-${game.game_id}-${card.card_id}`} card={card} isInitial={true} />
-                        ))}
-                        {game.rounds && game.rounds.map(round => (
-                          <HistoryCardItem key={`round-${game.game_id}-${round.round_number}-${round.card_id}`} card={round} isInitial={false} />
-                        ))}
-                         {(!game.initialCards || game.initialCards.length === 0) && (!game.rounds || game.rounds.length === 0) && !game.errorLoadingDetails && (
-                            <ListGroup.Item>Nessuna carta registrata per questa partita.</ListGroup.Item>
-                         )}
-                      </ListGroup>
-                    </Card.Body>
-                  </Card>
-                </Accordion.Body>
-              </Accordion.Item>
-            ))}
-          </Accordion>
+          {loadingGamesList && gamesList.length === 0 && ( // Mostra un messaggio di caricamento semplice se la lista è vuota e sta caricando
+            <p>Caricamento cronologia...</p>
+          )}
+
+          {!loadingGamesList && gamesList.length === 0 && !error ? (
+            <Alert variant="info">Non hai ancora completato nessuna partita.</Alert>
+          ) : !loadingGamesList && gamesList.length > 0 ? ( // Mostra la tabella solo se non sta caricando e ci sono partite
+            <Table striped bordered hover responsive className="mt-3 shadow-sm">
+              <thead className="table-light">
+                <tr>
+                  <th>Data Partita</th>
+                  <th>Esito</th>
+                  <th>Azioni</th>
+                </tr>
+              </thead>
+              <tbody>
+                {gamesList.map(game => {
+                  const gameDetailEntry = expandedGameDetails[game.game_id];
+                  const isLoadingThisGameDetails = loadingDetailsForGame === game.game_id;
+
+                  return (
+                    <React.Fragment key={game.game_id}>
+                      <tr>
+                        <td>{dayjs(game.date).format('DD/MM/YYYY HH:mm')}</td>
+                        <td>
+                          <span style={{ color: game.status === 'win' ? 'green' : (game.status === 'lose' ? 'red' : 'orange'), fontWeight: 'bold' }}>
+                            {game.status === 'win' ? 'VITTORIA' : (game.status === 'lose' ? 'SCONFITTA' : (game.status === 'ongoing' ? 'IN CORSO' : game.status.toUpperCase()))}
+                          </span>
+                        </td>
+                        <td>
+                          <Button
+                            variant="primary"
+                            size="sm"
+                            onClick={() => toggleGameDetails(game.game_id)}
+                            disabled={isLoadingThisGameDetails} // Mantenuto per disabilitare il bottone durante il caricamento dei dettagli
+                            aria-expanded={gameDetailEntry?.visible}
+                            aria-controls={`details-game-${game.game_id}`}
+                          >
+                            {/* Rimosso Spinner dal bottone */}
+                            {gameDetailEntry?.visible ? "Nascondi dettagli" : "Mostra dettagli"}
+                          </Button>
+                        </td>
+                      </tr>
+                      {gameDetailEntry?.visible && (
+                        <tr id={`details-game-${game.game_id}`}>
+                          <td colSpan="3" className="p-3 bg-light"> 
+                            {/* Rimosso Spinner dalla sezione dettagli */}
+                            {gameDetailEntry.error ? (
+                              <Alert variant="danger" className="mb-0">{gameDetailEntry.error}</Alert>
+                            ) : gameDetailEntry.data ? (
+                              <div>
+                                <h5 className="mb-3">
+                                  Carte totali raccolte: {gameDetailEntry.data.total_cards_collected}
+                                </h5>
+                                
+                                {gameDetailEntry.data.initial_cards && gameDetailEntry.data.initial_cards.length > 0 && (
+                                  <div className="mb-3">
+                                    <h6>Carte iniziali:</h6>
+                                    <ul className="list-unstyled ps-3">
+                                      {gameDetailEntry.data.initial_cards.map(card => (
+                                        <li key={`init-${game.game_id}-${card.card_id}`}>
+                                          - {card.description}
+                                        </li>
+                                      ))}
+                                    </ul>
+                                  </div>
+                                )}
+
+                                {gameDetailEntry.data.rounds && gameDetailEntry.data.rounds.length > 0 ? (
+                                  <div>
+                                    <h6>Round giocati: {gameDetailEntry.data.rounds.length}</h6>
+                                    <Table bordered size="sm" className="mb-0">
+                                      <thead className="table-secondary">
+                                        <tr>
+                                          <th>N°</th>
+                                          <th>Situazione</th>
+                                          <th>Esito</th>
+                                        </tr>
+                                      </thead>
+                                      <tbody>
+                                        {gameDetailEntry.data.rounds.map((round) => (
+                                          <tr key={`round-${game.game_id}-${round.card_id}-${round.round_number}`}>
+                                            <td>{round.round_number}</td>
+                                            <td>{round.description}</td>
+                                            <td>
+                                              <strong style={{color: round.guessed_correctly ? 'green' : 'red'}}>
+                                                {round.guessed_correctly ? 'Corretta' : 'Errata'}
+                                              </strong>
+                                            </td>
+                                          </tr>
+                                        ))}
+                                      </tbody>
+                                    </Table>
+                                  </div>
+                                ) : (
+                                  <p className="small mb-0"><em>Nessun round giocato oltre le carte iniziali.</em></p>
+                                )}
+                              </div>
+                            ) : <p className="mb-0">Nessun dettaglio da visualizzare.</p>}
+                          </td>
+                        </tr>
+                      )}
+                    </React.Fragment>
+                  );
+                })}
+              </tbody>
+            </Table>
+          ) : null} 
         </Col>
       </Row>
     </Container>

@@ -75,7 +75,7 @@ function HomePage(props) {
                   onClick={handleHistoryClick}
                   disabled={pendingHistory}
                 >
-                  CRONOLOGIA PARTITE
+                  IL MIO PROFILO
                 </button>
               </>
             )}

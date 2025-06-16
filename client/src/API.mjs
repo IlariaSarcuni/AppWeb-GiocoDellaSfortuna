@@ -107,7 +107,7 @@ const getWonCards = async (game_id) => {
 
 // 8. Ottieni storico delle partite di un utente (solo autenticati)
 const getGamesByUser = async (user_id) => {
-  const response = await fetch(`${SERVER_URL}/api/game/user=${user_id}`, {
+  const response = await fetch(`${SERVER_URL}/api/game/user/${user_id}`, { 
     credentials: 'include'
   });
   if (response.ok) {
@@ -155,7 +155,7 @@ async function getGameById(game_id) {
 
 
 
-// 13. Partita demo (3 carte iniziali + 1 situazione random, NO login necessario)
+// 12. Partita demo (3 carte iniziali + 1 situazione random, NO login necessario)
 const getDemoCards = async () => {
   const response = await fetch(`${SERVER_URL}/api/demo`);
   if (response.ok) {
