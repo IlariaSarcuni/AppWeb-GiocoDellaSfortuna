@@ -1,22 +1,14 @@
-import React, { useEffect, useState } from "react";
-import { useNavigate, useLocation } from "react-router"; // Import useLocation, useParams is not needed if gameId comes from state
+import { useEffect, useState } from "react";
+import { useNavigate, useLocation } from "react-router";
+import dayjs from "dayjs";
 import API from "../API.mjs";
 import '../index.css';
 import { Container, Row, Col, Card, Alert, Spinner, Button } from "react-bootstrap";
-
-// Helper function to merge and remove duplicate cards based on card_id
-const mergeAndUniqueCards = (initialCards, wonCards) => {
-  const allCardsMap = new Map();
-  initialCards.forEach(card => allCardsMap.set(card.card_id, card));
-  wonCards.forEach(card => allCardsMap.set(card.card_id, card)); // Overwrites initial if duplicate, or adds if new
-  return Array.from(allCardsMap.values());
-};
 
 function GameSummary() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Get gameId from location state passed by navigate
   const gameId = location.state?.gameId;
 
   const [gameDetails, setGameDetails] = useState(null);
@@ -30,7 +22,7 @@ function GameSummary() {
       setError(null);
 
       if (!gameId) {
-        setError("ID della partita non fornito o non trovato nello state della navigazione.");
+        setError("ID della partita non trovato.");
         setLoading(false);
         return;
       }
@@ -47,19 +39,19 @@ function GameSummary() {
              wonCards = await API.getWonCards(gameId);
           }
           
-          setPossessedCards(mergeAndUniqueCards(initialCards, wonCards));
+          // Combine initial and won cards.
+          setPossessedCards([...initialCards, ...wonCards]);
+
         } else {
-          // Handle case where details might be null even with a valid gameId (e.g., game not found in DB)
-          setError("Dettagli della partita non trovati per l'ID fornito.");
+          setError("Dettagli della partita non trovati.");
         }
-      } catch (err) {
-        console.error("Errore nel recupero dei dati della partita:", err); // Log the actual error for debugging
-        setError(`Errore nel recupero dei dati della partita: ${err.message || "Errore sconosciuto"}`);
+      } catch (err) {        
+        setError("Errore nel recupero dei dati della partita.");
       }
       setLoading(false);
     }
     fetchSummaryData();
-  }, [gameId]); // Dependency array includes gameId
+  }, [gameId]);
 
   const handleStartNewGame = () => {
     navigate("/game"); 
@@ -89,14 +81,15 @@ function GameSummary() {
                   <b>Stato:</b>{" "}
                   <span
                     style={{
-                      fontWeight: (gameDetails.status === "win" || gameDetails.status === "lose") ? "bold" : undefined,
-                      color: gameDetails.status === "win" ? "green" : gameDetails.status === "lose" ? "red" : "orange", // Default color for other statuses
-                      }}>
-                    {gameDetails.status === "win" ? "VITTORIA" : gameDetails.status === "lose" ? "SCONFITTA" : (gameDetails.status || "N/D").toUpperCase()}
+                      fontWeight: "bold",
+                      color: gameDetails.status === "win" ? "green" : "red",
+                    }}
+                  >
+                    {gameDetails.status === "win" ? "VITTORIA" : "SCONFITTA"}
                   </span>
                 </Col>
                 <Col md={6}>
-                  <b>Data:</b> {gameDetails.date ? new Date(gameDetails.date).toLocaleString() : "-"}
+                  <strong>Data:</strong> {gameDetails.date ? dayjs(gameDetails.date).format('DD/MM/YYYY HH:mm:ss') : "-"}
                 </Col>
               </Row>
               

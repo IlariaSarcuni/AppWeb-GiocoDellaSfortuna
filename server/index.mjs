@@ -126,7 +126,6 @@ app.post('/api/game/:game_id/init-cards', isLoggedIn, async (req, res) => {
   try {
     const game_id = req.params.game_id;
     const card_ids = req.body.card_ids;
-    // console.log("game_id:", game_id, "card_ids:", card_ids); // Debugging
     await gameDao.addInitialCards(game_id, card_ids);
     res.status(201).end();
   } catch (err) {
@@ -139,25 +138,12 @@ app.post('/api/game/:game_id/init-cards', isLoggedIn, async (req, res) => {
 app.get('/api/game/:game_id/situation', isLoggedIn, async (req, res) => {
   try {
     const game_id = req.params.game_id;
-    // console.log(`[SITUATION DEBUG] game_id: ${game_id}`);
-
     const initialIds = await gameDao.getInitialCardIds(game_id);
-    // console.log(`[SITUATION DEBUG] initialIds from DAO: ${JSON.stringify(initialIds)}`);
-
     const wonCards = await gameDao.getWonCardsInGame(game_id);
     const wonIds = wonCards.map(c => c.card_id);
-    // console.log(`[SITUATION DEBUG] wonIds from DAO: ${JSON.stringify(wonIds)}`);
-
     const usedIds = await gameDao.getUsedCardIdsInGame(game_id);
-    // console.log(`[SITUATION DEBUG] usedIds from DAO: ${JSON.stringify(usedIds)}`);
-
     const excludeIds = Array.from(new Set([...initialIds, ...wonIds, ...usedIds]));
-    // console.log(`[SITUATION DEBUG] FINAL excludeIds being passed to getRandomCards: ${JSON.stringify(excludeIds)}`);
-
     const cards = await gameDao.getRandomCards(1, excludeIds);
-    // if (cards.length > 0) {
-    //     console.log(`[SITUATION DEBUG] Card chosen by getRandomCards: ${JSON.stringify(cards[0])}`);
-    // }
 
     if (!cards.length) {
       res.status(404).json({ error: "Nessuna carta disponibile!" });
@@ -175,7 +161,6 @@ app.get('/api/game/:game_id/situation', isLoggedIn, async (req, res) => {
 app.post('/api/game/:game_id/round', isLoggedIn, async (req, res) => {
   try {
     const { card_id, round_number } = req.body;
-    // console.log('game_id:', req.params.game_id, 'card_id:', card_id, 'round_number:', round_number); // Debugging
     const round_id = await gameDao.addRound(req.params.game_id, card_id, round_number);
     res.json({ round_id });
   } catch (err) {
@@ -247,9 +232,8 @@ app.put('/api/game/:game_id/status', isLoggedIn, async (req, res) => {
 
 
 
-// 11. Ottieni i dati di una singola partita (detto "summary")
+// 11. Ottieni i dati di una singola partita (summary)
 app.get('/api/game/:game_id', isLoggedIn, async (req, res) => {
-  // console.log("Richiesta dati partita:", req.params.game_id); // Debugging
   try {
     const game = await gameDao.getGameById(req.params.game_id);
     if (!game) {

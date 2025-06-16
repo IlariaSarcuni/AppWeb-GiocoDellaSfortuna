@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Container, Row, Col, Card, Alert, Form, Button, ProgressBar, Spinner } from "react-bootstrap";
 import { useNavigate } from "react-router";
 import API from "../API.mjs";
@@ -51,18 +51,16 @@ function GamePage(props) {
 
   async function handleStartGame() {
     if (isGameSetupInProgress) {
-      console.log('[handleStartGame] Creazione partita GIA\' IN CORSO (modulo lock), esco.');
       return;
     }
 
-    console.log('[handleStartGame] INIZIO');
     isGameSetupInProgress = true;
     setIsCreatingGameState(true);
     setLoading(true);
+    setFeedback(null); // Pulisce feedback precedenti
 
     setGameOver(false);
     setStatus("ongoing");
-    setFeedback(null);
     setTimer(30);
     setShowResult(false);
     setRoundNumber(1);
@@ -71,12 +69,10 @@ function GamePage(props) {
     setNumLost(0);
     setWonCards([]);
     setAllCards([]);
-    setGameId(null);
+    setGameId(null); // Resetta gameId all'inizio
 
     try {
-      console.log('[handleStartGame] Chiamo API.createGame()');
       const { game_id } = await API.createGame();
-      console.log('[handleStartGame] API.createGame() restituito, game_id:', game_id);
       setGameId(game_id);
 
       const initCardsData = await API.getInitialCards();
@@ -86,30 +82,27 @@ function GamePage(props) {
       initialCardsStateRef.current = sortedInitCards;
 
       await API.saveInitialCards(game_id, initCardsData.map(c => c.card_id));
-      console.log('[handleStartGame] Carte iniziali salvate per game_id:', game_id);
 
       const sit = await API.getSituation(game_id);
       setSituation(sit);
-      console.log('[handleStartGame] Situazione ottenuta per game_id:', game_id);
       
       setWonCards([]);
       setIsFirstLoad(false);
-      console.log('[handleStartGame] isFirstLoad impostato a false');
 
     } catch (err) {
-      console.error("[handleStartGame] Errore durante la creazione della partita:", err);
-      setFeedback({ type: "danger", msg: `Errore creazione partita: ${err.message || err}` });
-      setGameId(null); 
+      const errorMessage = err?.message || ('Errore sconosciuto durante la creazione della partita.');
+      setFeedback({ type: "danger", msg: `Errore creazione partita: ${errorMessage}` });
+      setGameId(null); // Assicura che gameId sia null in caso di errore
     } finally {
       isGameSetupInProgress = false;
       setIsCreatingGameState(false);
       setLoading(false);
-      console.log('[handleStartGame] FINE. isGameSetupInProgress:', isGameSetupInProgress);
     }
   }
   
   async function handleSubmit(e, timeout = false) {
     if (e) e.preventDefault();
+    setFeedback(null); // Pulisce feedback precedenti prima di validare/sottomettere
 
     if (loading || !situation || situation.misfortune_index == null) {
       setFeedback({ type: "danger", msg: "La situazione non è pronta. Riprova." });
@@ -118,7 +111,7 @@ function GamePage(props) {
       return;
     }
     if (chosenPos === null && !timeout) {
-      setFeedback({ type: "danger", msg: "Seleziona una posizione!" });
+      setFeedback({ type: "danger", msg: "Seleziona una posizione!" }); // Verrà mostrato vicino al form
       return;
     }
 
@@ -178,7 +171,7 @@ function GamePage(props) {
     setLoading(true);
     setChosenPos(null);
     setTimer(30);
-    setFeedback(null);
+    setFeedback(null); // Pulisce feedback precedenti
     setShowResult(false);
 
     try {
@@ -186,7 +179,8 @@ function GamePage(props) {
       setSituation(sit);
       setRoundNumber(rn => rn + 1);
     } catch (err) { 
-      setFeedback({ type: "danger", msg: "Errore nel caricamento della situazione. Riprova." });
+      const errorMessage = err?.message || (typeof err === 'string' ? err : 'Errore sconosciuto durante il caricamento della situazione.');
+      setFeedback({ type: "danger", msg: `Errore nel caricamento della situazione: ${errorMessage}. Riprova.` });
     }
     setLoading(false);
   }
@@ -196,15 +190,11 @@ function GamePage(props) {
   }
 
   useEffect(() => {
-    console.log('[useEffect] Eseguito. gameId:', gameId, 'isFirstLoad:', isFirstLoad, 'isCreatingGameState:', isCreatingGameState);
-    if (!gameId && isFirstLoad && !isGameSetupInProgress) {
-      console.log('[useEffect] Condizione VERA (!gameId && isFirstLoad && !isGameSetupInProgress), chiamo handleStartGame');
+    if (!gameId && isFirstLoad && !isGameSetupInProgress && !feedback) { 
       handleStartGame();
-    } else {
-      console.log('[useEffect] Condizione FALSA o setup già in corso.');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId, isFirstLoad]);
+  }, [gameId, isFirstLoad]); 
 
 
   function renderCardList() {
@@ -285,6 +275,7 @@ function GamePage(props) {
     return null;
   }
   
+  // Schermata di caricamento iniziale per la creazione della partita
   if (isFirstLoad && isCreatingGameState) { 
       return (
           <Container className="text-center mt-5">
@@ -296,8 +287,33 @@ function GamePage(props) {
       );
   }
 
+  // Se la creazione della partita è fallita (gameId è null e c'è un feedback di errore)
+  // e non siamo nel mezzo di un tentativo di creazione.
+  if (!gameId && feedback && feedback.type === 'danger' && !isCreatingGameState) {
+    return (
+      <Container className="text-center mt-5">
+        <Alert variant="danger">{feedback.msg}</Alert>
+        <Button onClick={() => {
+          // Non serve setFeedback(null) qui perché handleStartGame lo farà o lo sovrascriverà
+          handleStartGame(); 
+        }} className="mt-3">
+          Riprova a iniziare una nuova partita
+        </Button>
+      </Container>
+    );
+  }
+
   return (
     <Container className="mt-3 mb-3">
+      {/* Spinner di caricamento generico (es. durante handleNextRound) */}
+      {loading && !isCreatingGameState && 
+        <Container className="text-center mt-5">
+          <Spinner animation="border" />
+          <p>Caricamento...</p>
+        </Container>
+      }
+
+      {/* Interfaccia di gioco principale (mostrata solo se gameId esiste e non c'è un caricamento critico) */}
       {gameId && !loading && (
         <Row>
           <Col md={8} className="mx-auto">
@@ -312,11 +328,20 @@ function GamePage(props) {
                 </p>
               </div>
 
+              {/* Alert per errori non legati al risultato del form (es. fallimento caricamento situazione) */}
+              {feedback && !showResult && feedback.type === 'danger' && feedback.msg !== "Seleziona una posizione!" && (
+                <Alert variant="danger" className="mt-3">{feedback.msg}</Alert>
+              )}
+
               {!gameOver && situation && (
                 <>
                   <ProgressBar now={timer * 100 / 30} label={`${timer}s`} variant={timer > 10 ? "success" : "danger"} className="mb-3" />
                   {!showResult && (
                     <Form onSubmit={handleSubmit}>
+                      {/* Alert per validazione "Seleziona una posizione!" */}
+                      {feedback && feedback.msg === "Seleziona una posizione!" && !showResult && (
+                        <Alert variant="warning" className="mt-0 mb-3">{feedback.msg}</Alert>
+                      )}
                       <Form.Group>
                         <Form.Label>Qual è la posizione corretta?</Form.Label>
                         <div>
@@ -347,12 +372,13 @@ function GamePage(props) {
                     </Form>
                   )}
                   
+                  {/* Feedback dopo aver sottomesso il form (successo/errore/timeout) */}
                   {feedback && showResult && (
                     <>
                       <Alert variant={feedback.type} className="mt-3">
                         {feedback.msg} {feedback.extra && <div>{feedback.extra}</div>}
                       </Alert>
-                      {!gameOver && (
+                      {!gameOver && ( // Mostra "Prossimo round" solo se il gioco non è finito
                         <Button className="mt-2 mb-3" onClick={handleNextRound} disabled={loading}>
                           Prossimo round
                         </Button>
@@ -366,7 +392,6 @@ function GamePage(props) {
           </Col>
         </Row>
       )}
-      {loading && !isCreatingGameState && <Container className="text-center mt-5"><Spinner animation="border" /><p>Caricamento...</p></Container>}
     </Container>
   );
 }
