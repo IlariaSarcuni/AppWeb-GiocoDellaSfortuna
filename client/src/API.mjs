@@ -1,7 +1,5 @@
 const SERVER_URL = 'http://localhost:3001';
 
-// ----------- GAME FLOW -----------
-
 // 1. Ottieni 3 carte iniziali per una nuova partita (solo autenticati)
 const getInitialCards = async (exclude = []) => {
   const query = exclude.length ? `?exclude=${exclude.join(',')}` : '';
@@ -15,6 +13,7 @@ const getInitialCards = async (exclude = []) => {
   }
 };
 
+// 2. Ottieni le carte iniziali di una partita dato il suo game_id (solo autenticati)
 const getInitialCardsByGameId = async (game_id) => {
   const response = await fetch(`${SERVER_URL}/api/game/${game_id}/init-cards`, {
     credentials: 'include'
@@ -23,7 +22,7 @@ const getInitialCardsByGameId = async (game_id) => {
   return await response.json();
 };
 
-// 2. Crea una nuova partita (solo autenticati)
+// 3. Crea una nuova partita (solo autenticati)
 const createGame = async () => {
   const response = await fetch(`${SERVER_URL}/api/game`, {
     method: 'POST',
@@ -37,7 +36,7 @@ const createGame = async () => {
   }
 };
 
-// 3. Salva le carte iniziali di una partita (solo autenticati)
+// 4. Salva le carte iniziali di una partita (solo autenticati)
 const saveInitialCards = async (game_id, card_ids) => {
   const response = await fetch(`${SERVER_URL}/api/game/${game_id}/init-cards`, {
     method: 'POST',
@@ -50,7 +49,7 @@ const saveInitialCards = async (game_id, card_ids) => {
   }
 };
 
-// 4. Ottieni una situazione da indovinare (una card random non usata, solo autenticati)
+// 5. Ottieni una situazione da indovinare (una card random non usata, solo autenticati)
 const getSituation = async (game_id) => {
   const response = await fetch(`${SERVER_URL}/api/game/${game_id}/situation`, {
     credentials: 'include'
@@ -64,9 +63,8 @@ const getSituation = async (game_id) => {
   }
 };
 
-// 5. Aggiungi un nuovo round alla partita (solo autenticati)
+// 6. Aggiungi un nuovo round alla partita (solo autenticati)
 const addRound = async (game_id, card_id, round_number) => {
-  console.log({ game_id, card_id, round_number });
   const response = await fetch(`${SERVER_URL}/api/game/${game_id}/round`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -80,7 +78,7 @@ const addRound = async (game_id, card_id, round_number) => {
   }
 };
 
-// 6. Aggiorna esito del round (solo autenticati)
+// 7. Aggiorna esito del round (solo autenticati)
 const updateRoundResult = async (round_id, guessed_correctly, chosen_position) => {
   const response = await fetch(`${SERVER_URL}/api/game/round/${round_id}`, {
     method: 'PUT',
@@ -93,7 +91,7 @@ const updateRoundResult = async (round_id, guessed_correctly, chosen_position) =
   }
 };
 
-// 7. Ottieni tutte le carte vinte in una partita (solo autenticati)
+// 8. Ottieni tutte le carte vinte in una partita (solo autenticati)
 const getWonCards = async (game_id) => {
   const response = await fetch(`${SERVER_URL}/api/game/${game_id}/won-cards`, {
     credentials: 'include'
@@ -105,7 +103,7 @@ const getWonCards = async (game_id) => {
   }
 };
 
-// 8. Ottieni storico delle partite di un utente (solo autenticati)
+// 9. Ottieni storico delle partite di un utente (solo autenticati)
 const getGamesByUser = async (user_id) => {
   const response = await fetch(`${SERVER_URL}/api/game/user/${user_id}`, { 
     credentials: 'include'
@@ -117,7 +115,7 @@ const getGamesByUser = async (user_id) => {
   }
 };
 
-// 9. Ottieni la cronologia dettagliata di una partita (solo autenticati)
+// 10. Ottieni la cronologia dettagliata di una partita (solo autenticati)
 const getGameHistory = async (game_id) => {
   const response = await fetch(`${SERVER_URL}/api/game/${game_id}/history`, {
     credentials: 'include'
@@ -129,7 +127,7 @@ const getGameHistory = async (game_id) => {
   }
 };
 
-// 10. Aggiorna stato della partita (solo autenticati)
+// 11. Aggiorna stato della partita (solo autenticati)
 const updateGameStatus = async (game_id, status) => {
   const response = await fetch(`${SERVER_URL}/api/game/${game_id}/status`, {
     method: 'PUT',
@@ -142,7 +140,7 @@ const updateGameStatus = async (game_id, status) => {
   }
 };
 
-// 11. Recupera i dati di una partita dato l'id
+// 12. Recupera i dati di una partita dato l'id
 async function getGameById(game_id) {
   const response = await fetch(`${SERVER_URL}/api/game/${game_id}`, {
     credentials: 'include'
@@ -151,11 +149,7 @@ async function getGameById(game_id) {
   return await response.json();
 }
 
-
-
-
-
-// 12. Partita demo (3 carte iniziali + 1 situazione random, NO login necessario)
+// 13. Partita demo 
 const getDemoCards = async () => {
   const response = await fetch(`${SERVER_URL}/api/demo`);
   if (response.ok) {
@@ -165,8 +159,7 @@ const getDemoCards = async () => {
   }
 };
 
-// ----------- AUTH -----------
-
+//Autenticazione
 const logIn = async (credentials) => {
   const response = await fetch(SERVER_URL + '/api/sessions', {
     method: 'POST',
@@ -194,7 +187,7 @@ const getUserInfo = async () => {
   if (response.ok) {
     return user;
   } else {
-    throw user;  // an object with the error coming from the server
+    throw user;  
   }
 };
 
@@ -207,10 +200,7 @@ const logOut = async() => {
     return null;
 }
 
-// ----------- EXPORT -----------
-
 const API = {
-  // Game
   getInitialCards,
   getInitialCardsByGameId,
   createGame,
@@ -222,10 +212,8 @@ const API = {
   getGamesByUser,
   getGameHistory,
   updateGameStatus,
-  getGameById,
-  // Demo
+  getGameById,  
   getDemoCards,
-  // Auth
   logIn,
   getUserInfo,
   logOut

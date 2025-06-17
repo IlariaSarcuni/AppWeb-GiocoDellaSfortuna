@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { Container, Row, Col, Card, Alert, Form, Button, ProgressBar } from "react-bootstrap";
 import API from '../API.mjs';
 import '../index.css';
@@ -16,7 +16,6 @@ function DemoGame() {
   const [timer, setTimer] = useState(30);
   const [showResult, setShowResult] = useState(false);
 
-  //Funzione per caricare la demo
   async function loadDemo() {
     setLoading(true);
     setShowResult(false);
@@ -36,7 +35,7 @@ function DemoGame() {
 
   useEffect(() => {
     loadDemo();
-  }, []);
+  }, []); //chiama la funzione una sola volta quando il componente viene montato
 
   useEffect(() => {
     if (loading || showResult) return;
@@ -44,9 +43,10 @@ function DemoGame() {
       handleSubmit(null, true);
       return;
     }
+    // Se nessuna delle condizioni sopra è vera, imposta un timer
     const t = setTimeout(() => setTimer((old) => old - 1), 1000);
     return () => clearTimeout(t);
-  }, [timer, loading, showResult]);
+  }, [timer, loading, showResult]); //verrà rieseguito ogni volta che timer, loading o showResult cambia
 
   function handlePositionChange(e) {
     setChosenPos(Number(e.target.value));
@@ -59,6 +59,7 @@ function DemoGame() {
       setShowResult(true);
       return;
     }
+    // Messaggio di errore se non è stata selezionata una posizione
     if (chosenPos === null && !timeout) {
       setFeedback({ type: "danger", msg: "Seleziona una posizione!" });
       return;
@@ -93,6 +94,7 @@ function DemoGame() {
           {!loading && (
             <>
               <Row className="justify-content-center mb-4 align-items-stretch">
+                {/*Nuova carta situazione */}
                 {roundCard && (
                   <Col xs={12} sm={6} md={4} lg={3} className="mb-3 d-flex align-items-stretch">
                     <Card border="warning" className="card-warning h-100 w-100">
@@ -107,8 +109,8 @@ function DemoGame() {
                   </Col>
                 )}
 
-                {/* Altre carte */}
-                {initialCards.map((c, idx) => (
+                {/* Carte iniziali */}
+                {initialCards.map((c) => (
                   <Col key={c.card_id} xs={12} sm={6} md={4} lg={3} className="mb-3 d-flex align-items-stretch">
                     <Card className="card-default h-100 w-100">
                       {c.image && (
@@ -160,7 +162,7 @@ function DemoGame() {
                       </Alert>
 
                       {showResult && (
-                        <div className="mt-3 mb-3"> {/* Applicato mt-3 e mb-3 */}
+                        <div className="mt-3 mb-3"> 
                           <Button className="me-2" onClick={handleReplay} disabled={loading}>Prova un'altra demo</Button>
                           <Button href="/">Torna alla home</Button>
                         </div>

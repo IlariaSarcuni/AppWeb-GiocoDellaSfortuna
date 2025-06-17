@@ -1,4 +1,4 @@
-# Login as a sample user
+# Login 
 POST http://localhost:3001/api/sessions
 content-type: application/json
 
@@ -9,7 +9,7 @@ content-type: application/json
 
 ###
 
-# Check current session (user info)
+# Verifica sessione corrente
 GET http://localhost:3001/api/sessions/current
 
 ###
@@ -19,88 +19,95 @@ DELETE http://localhost:3001/api/sessions/current
 
 ###
 
-# Get 3 random cards, excluding cards with id 2 and 4, without misfortune_index
-GET http://localhost:3001/api/cards?count=3&exclude=2&exclude=4&withMisfortuneIndex=false
+# Ottieni 3 carte iniziali random 
+GET http://localhost:3001/api/game/init-cards
 
 ###
 
-# Get card by id
-GET http://localhost:3001/api/cards/5
+# Crea nuova partita 
+POST http://localhost:3001/api/game
+content-type: application/json
+
+{}
 
 ###
 
-# Create a new game
-POST http://localhost:3001/api/games
+# Salva le carte iniziali per una partita
+POST http://localhost:3001/api/game/1/init-cards
 content-type: application/json
 
 {
-  "user_id": 1,
-  "initialCardIds": [3, 7, 12],
-  "status": "ongoing"
+  "card_ids": [3, 7, 12]
 }
 
 ###
 
-# Get all games for user with user_id 1
-GET http://localhost:3001/api/games/user/1
+# Ottieni le carte iniziali della partita 
+GET http://localhost:3001/api/game/1/init-cards
 
 ###
 
-# Get specific game by id
-GET http://localhost:3001/api/games/10
+# Ottieni una situazione da indovinare per la partita 
+GET http://localhost:3001/api/game/1/situation
 
 ###
 
-# Update game status to "won"
-PATCH http://localhost:3001/api/games/10/status
-content-type: application/json
-
-{
-  "status": "won"
-}
-
-###
-
-# Delete a game
-DELETE http://localhost:3001/api/games/10
-
-###
-
-# Get initial cards of a game
-GET http://localhost:3001/api/games/10/initial-cards
-
-###
-
-# Get all rounds of a game
-GET http://localhost:3001/api/games/10/rounds
-
-###
-
-# Add a new round to a game
-POST http://localhost:3001/api/games/10/rounds
+# Aggiungi un nuovo round alla partita 
+POST http://localhost:3001/api/game/1/round
 content-type: application/json
 
 {
   "card_id": 7,
-  "round_number": 2,
-  "guessed_correctly": 1,
-  "chosen_position": 2,
-  "time": "2025-06-11T09:15:00Z"
+  "round_number": 2
 }
 
 ###
 
-# Get all won cards of a game
-GET http://localhost:3001/api/games/10/rounds/won
+# Aggiorna esito del round 
+PUT http://localhost:3001/api/game/round/1
+content-type: application/json
+
+{
+  "guessed_correctly": 1,
+  "chosen_position": 2
+}
 
 ###
 
-# Get a card for the next round, excluding cards 3, 7, 12
-GET http://localhost:3001/api/games/10/next-card?exclude=3&exclude=7&exclude=12
+# Ottieni tutte le carte vinte in una partita 
+GET http://localhost:3001/api/game/1/won-cards
 
 ###
 
-# Get a demo game for anonymous users
+# Ottieni storico delle partite dell'utente autenticato
+GET http://localhost:3001/api/game/user/1
+
+###
+
+# Ottieni cronologia dettagliata di una partita 
+GET http://localhost:3001/api/game/1/history
+
+###
+
+# Aggiorna stato partita 
+PUT http://localhost:3001/api/game/1/status
+content-type: application/json
+
+{
+  "status": "win"
+}
+
+###
+
+# Ottieni i dati di una singola partita 
+GET http://localhost:3001/api/game/1
+
+###
+
+# Partita demo
 GET http://localhost:3001/api/demo
 
 ###
+
+
+

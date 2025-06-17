@@ -2,26 +2,24 @@ import db from '../db.mjs';
 import dayjs from 'dayjs';
 import { Card, Game, Round } from '../models/Games.mjs';
 
-// Mapping functions
+//Coverte le righe del db in istanze del modello
 function mapRowsToCards(rows) {
     return rows.map(row => new Card(row.card_id, row.description, row.image, row.misfortune_index));
 }
-
 function mapRowsToGames(rows) {
     return rows.map(row => new Game(row.game_id, row.user_id, row.date, row.status));
 }
-
 function mapRowsToRounds(rows) {
     return rows.map(row => new Round(row.round_id, row.game_id, row.card_id, row.round_number, row.guessed_correctly, row.chosen_position, row.time));
 }
-
+//Funzione per ottenere N valori casuali da un array
 function getRandomValues(arr, numValues) {
     let shuffled = arr.sort(() => 0.5 - Math.random());
     return shuffled.slice(0, numValues);
 }
 
 export default function GameDao() {
-    // Get N random cards (excluding those in excludeIds)
+    // Ottieni N carte random escludendo quelle in excludeIds
     this.getRandomCards = (numCards, excludeIds = []) => {
         return new Promise((resolve, reject) => {
             let query = 'SELECT * FROM cards';
@@ -42,7 +40,7 @@ export default function GameDao() {
         });
     };
 
-    // Get card by ID
+    // Ottieni una carta tramite id
     this.getCardById = (card_id) => {
         return new Promise((resolve, reject) => {
             const query = 'SELECT * FROM cards WHERE card_id = ?';
@@ -56,7 +54,7 @@ export default function GameDao() {
         });
     };
 
-    // Get cards by IDs
+    // Ottieni più carte tramite una lista di id
     this.getCardsByIds = (card_ids) => {
         return new Promise((resolve, reject) => {
             if (!card_ids.length) return resolve([]);
@@ -71,7 +69,7 @@ export default function GameDao() {
         });
     };
 
-    // Create a new game
+    // Crea una nuova partita per l'utente dato
     this.addGame = (user_id) => {
         return new Promise((resolve, reject) => {
             const query = 'INSERT INTO games (user_id, date, status) VALUES (?, ?, ?)';
@@ -79,13 +77,13 @@ export default function GameDao() {
                 if (err) {
                     reject(err);
                 } else {
-                    resolve(this.lastID); // game_id
+                    resolve(this.lastID); // game_id generato
                 }
             });
         });
     };
 
-    // Get a game by ID
+    // Ottieni una partita tramite id
     this.getGame = (game_id) => {
         return new Promise((resolve, reject) => {
             const query = 'SELECT * FROM games WHERE game_id = ?';
@@ -99,7 +97,7 @@ export default function GameDao() {
         });
     };
 
-    // Update game status (win/lose)
+    // Aggiorna lo stato di una partita (win/lose)
     this.updateGameStatus = (game_id, status) => {
         return new Promise((resolve, reject) => {
             const query = 'UPDATE games SET status = ? WHERE game_id = ?';
@@ -110,12 +108,7 @@ export default function GameDao() {
         });
     }; 
 
-
-
-
-
-
-    // Add initial cards to a game (initial_game_cards table)
+    // Salva le carte iniziali di una partita
     this.addInitialCards = (game_id, card_ids) => {
         return Promise.all(card_ids.map(card_id => {
             return new Promise((resolve, reject) => {
@@ -128,7 +121,7 @@ export default function GameDao() {
         }));
     };
 
-    // Get initial cards for a game (from initial_game_cards)
+    // Ottieni le carte iniziali della partita
     this.getInitialCards = (game_id) => {
         return new Promise((resolve, reject) => {
             const query = `
@@ -144,18 +137,18 @@ export default function GameDao() {
         });
     };
 
-    // Create a new round
+    // Aggiungi un nuovo round alla partita
     this.addRound = (game_id, card_id, round_number) => {
         return new Promise((resolve, reject) => {
             const query = 'INSERT INTO rounds (game_id, card_id, round_number, guessed_correctly, chosen_position, time) VALUES (?, ?, ?, ?, ?, ?)';
             db.run(query, [game_id, card_id, round_number, 0, null, dayjs().format('YYYY-MM-DD HH:mm:ss')], function (err) {
                 if (err) reject(err);
-                else resolve(this.lastID); // round_id
+                else resolve(this.lastID); // round_id generato
             });
         });
     };
 
-    // Update round result
+    // Aggiorna il risultato di un round (corretta/errata e posizione scelta)
     this.updateRoundResult = (round_id, guessed_correctly, chosen_position) => {
         return new Promise((resolve, reject) => {
             const query = 'UPDATE rounds SET guessed_correctly = ?, chosen_position = ? WHERE round_id = ?';
@@ -166,7 +159,7 @@ export default function GameDao() {
         });
     };
 
-    // Get all rounds for a game
+    // Ottieni tutti i round di una partita
     this.getRoundsByGame = (game_id) => {
         return new Promise((resolve, reject) => {
             const query = 'SELECT * FROM rounds WHERE game_id = ? ORDER BY round_number ASC';
@@ -177,7 +170,7 @@ export default function GameDao() {
         });
     };
 
-    // Get the last round number for a game
+    // Ottieni il numero dell'ultimo round giocato in una partita
     this.getLastRoundNumber = (game_id) => {
         return new Promise((resolve, reject) => {
             const query = 'SELECT MAX(round_number) as maxRound FROM rounds WHERE game_id = ?';
@@ -188,7 +181,7 @@ export default function GameDao() {
         });
     };
 
-    // Get only the IDs of the initial cards for a game (using initial_game_cards)
+    // Ottieni solo gli ID delle carte iniziali per una partita
     this.getInitialCardIds = (game_id) => {
         return new Promise((resolve, reject) => {
             const query = "SELECT card_id FROM initial_game_cards WHERE game_id = ?";
@@ -199,7 +192,7 @@ export default function GameDao() {
         });
     };
 
-    // Get all card_ids already used in a game (rounds)
+    // Ottieni tutti gli ID delle carte già usate in una partita (rounds)
     this.getUsedCardIdsInGame = (game_id) => {
         return new Promise((resolve, reject) => {
             const query = 'SELECT card_id FROM rounds WHERE game_id = ?';
@@ -210,7 +203,7 @@ export default function GameDao() {
         });
     };
 
-    // Get won cards in a game (guessed_correctly = 1, excluding initial)
+    // Ottieni tutte le carte vinte in una partita (eccetto le iniziali)
     this.getWonCardsInGame = (game_id) => {
         return new Promise((resolve, reject) => {
             const query = `
@@ -226,7 +219,7 @@ export default function GameDao() {
         });
     };
 
-    // Ottieni i dati di una partita specifica
+    // Ottieni i dati di una partita tramite id (senza mappatura)
     this.getGameById = (game_id) => {
         return new Promise((resolve, reject) => {
             const query = 'SELECT * FROM games WHERE game_id = ?';
@@ -237,7 +230,7 @@ export default function GameDao() {
         });
     };
 
-    // Get all games for a user, ordered by date desc
+    // Ottieni tutte le partite di un utente ordinate dalla più recente
     this.getGamesByUser = (user_id) => {
         return new Promise((resolve, reject) => {
             const query = 'SELECT * FROM games WHERE user_id = ? ORDER BY date DESC';
@@ -248,7 +241,7 @@ export default function GameDao() {
         });
     };
 
-    // Get game history: all rounds (cards, results, round number) for a game
+    // Ottieni la cronologia di una partita (tutti i round)
     this.getGameHistory = (game_id) => {
         return new Promise((resolve, reject) => {
             const query = `
@@ -265,7 +258,7 @@ export default function GameDao() {
         });
     };
 
-    // For demo: get 3 initial cards and 1 situation to guess, all random, ensuring no overlap
+    // DEMO: ottieni 3 carte iniziali casuali e 1 situazione da indovinare
     this.getDemoCards = () => {
         return new Promise((resolve, reject) => {
             db.all('SELECT * FROM cards', (err, rows) => {
@@ -280,7 +273,7 @@ export default function GameDao() {
         });
     };
 
-    // Count correct guesses (won rounds) in a game (excluding initial)
+    // Conta il numero di round vinti in una partita
     this.countCorrectGuesses = (game_id) => {
         return new Promise((resolve, reject) => {
             const query = 'SELECT COUNT(*) as cnt FROM rounds WHERE game_id = ? AND guessed_correctly = 1 AND round_number > 0';
@@ -291,7 +284,7 @@ export default function GameDao() {
         });
     };
 
-    // Count failed rounds in a game (excluding initial)
+    // Conta il numero di round persi in una partita 
     this.countFailedGuesses = (game_id) => {
         return new Promise((resolve, reject) => {
             const query = 'SELECT COUNT(*) as cnt FROM rounds WHERE game_id = ? AND guessed_correctly = 0 AND round_number > 0';

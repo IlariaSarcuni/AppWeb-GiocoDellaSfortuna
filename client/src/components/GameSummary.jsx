@@ -9,6 +9,7 @@ function GameSummary() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  // Estrae gameId dallo stato passato durante la navigazione
   const gameId = location.state?.gameId;
 
   const [gameDetails, setGameDetails] = useState(null);
@@ -38,12 +39,10 @@ function GameSummary() {
           if (details.status === "win" || details.status === "lose") {
              wonCards = await API.getWonCards(gameId);
           }
-          
-          // Combine initial and won cards.
           setPossessedCards([...initialCards, ...wonCards]);
 
         } else {
-          setError("Dettagli della partita non trovati.");
+          setError("Riepilogo della partita non trovato.");
         }
       } catch (err) {        
         setError("Errore nel recupero dei dati della partita.");
@@ -51,7 +50,7 @@ function GameSummary() {
       setLoading(false);
     }
     fetchSummaryData();
-  }, [gameId]);
+  }, [gameId]); // Si riesegue quando il componente viene montato o quando gameId cambia
 
   const handleStartNewGame = () => {
     navigate("/game"); 
@@ -60,11 +59,9 @@ function GameSummary() {
   if (loading) {
     return <Container className="mt-4 text-center"><Spinner animation="border" /></Container>;
   }
-
   if (error) {
     return <Container className="mt-4"><Alert variant="danger">{error}</Alert></Container>;
   }
-
   if (!gameDetails) {
     return <Container className="mt-4"><Alert variant="warning">Partita non trovata o dati non disponibili.</Alert></Container>;
   }
@@ -79,22 +76,15 @@ function GameSummary() {
               <Row className="mb-3">
                 <Col md={6}>
                   <b>Stato:</b>{" "}
-                  <span
-                    style={{
-                      fontWeight: "bold",
-                      color: gameDetails.status === "win" ? "green" : "red",
-                    }}
-                  >
+                  <span style={{ fontWeight: "bold", color: gameDetails.status === "win" ? "green" : "red"}}>
                     {gameDetails.status === "win" ? "VITTORIA" : "SCONFITTA"}
                   </span>
                 </Col>
                 <Col md={6}>
                   <strong>Data:</strong> {gameDetails.date ? dayjs(gameDetails.date).format('DD/MM/YYYY HH:mm:ss') : "-"}
                 </Col>
-              </Row>
-              
+              </Row>              
               <hr/>
-
               <h5 className="mt-3">Carte ottenute:</h5>
                 {possessedCards.length > 0 ? (
                   <Row className="g-3">
@@ -102,20 +92,11 @@ function GameSummary() {
                       <Col xs={12} sm={6} md={4} key={card.card_id} className="d-flex">
                         <Card className="card-default h-100 w-100">
                           {card.image && (
-                            <Card.Img
-                              variant="top"
-                              src={`http://localhost:3001/img/${card.image}`}
-                              alt="img"
-                              className="card-img-top"
-                            />
+                            <Card.Img variant="top" src={`http://localhost:3001/img/${card.image}`} alt="img" className="card-img-top"/>
                           )}
                           <Card.Body className="card-body p-2">
-                            <Card.Text className="card-text">
-                              {card.description}
-                            </Card.Text>
-                            <div className="misfortune-index">
-                              {card.misfortune_index}
-                            </div>
+                            <Card.Text className="card-text">{card.description}</Card.Text>
+                            <div className="misfortune-index">{card.misfortune_index}</div>
                           </Card.Body>
                         </Card>
                       </Col>
@@ -128,12 +109,8 @@ function GameSummary() {
               <hr className="my-4"/>
 
               <div className="text-center">
-                <Button variant="success" className="me-2" onClick={handleStartNewGame}>
-                  NUOVA PARTITA
-                </Button>
-                <Button variant="secondary" onClick={() => navigate("/")}>
-                  TORNA ALLA HOME
-                </Button>
+                <Button variant="success" className="me-2" onClick={handleStartNewGame}>NUOVA PARTITA</Button>
+                <Button variant="secondary" onClick={() => navigate("/")}>TORNA ALLA HOME</Button>
               </div>
             </Card.Body>
           </Card>

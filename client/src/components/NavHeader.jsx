@@ -12,9 +12,7 @@ function NavHeader(props) {
           {props.loggedIn ? (
             <LogoutButton logout={props.handleLogout}  />
           ) : (
-            <Link to="/login" className="btn btn-outline-light">
-              Login
-            </Link>
+            <Link to="/login" className="btn btn-outline-light">Login</Link>
           )}
         </div>
       </Container>

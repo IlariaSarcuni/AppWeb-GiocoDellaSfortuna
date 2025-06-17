@@ -18,16 +18,15 @@ app.use(express.json());
 
 const corsOptions = {
   origin: 'http://localhost:5173',
-  optionsSuccessState: 200,
+  optionsSuccessStatus: 200,
   credentials: true
 };
 
 app.use(cors(corsOptions));
 
-// Serve le immagini delle carte (cartella /img nella root del progetto)
 app.use('/img', express.static('img'))
 
-// --- AUTH ---
+//Autwnticazione
 passport.use(new LocalStrategy(async function verify(username, password, cb) {
   const user = await getUser(username, password);
   if(!user)
@@ -59,9 +58,9 @@ app.use(session({
 app.use(passport.authenticate('session'));
 
 
-// --------- API ROUTES ---------
+// API ROUTES
 
-// --- Auth ---
+//Autenticazione
 // POST /api/sessions
 app.post('/api/sessions', passport.authenticate('local'), function(req, res) {
   return res.status(201).json(req.user);
@@ -83,9 +82,9 @@ app.delete('/api/sessions/current', (req, res) => {
   });
 });
 
-// --- GAME ROUTES (autenticato) ---
+//GAME ROUTES (autenticato)
 
-// 1. Ottieni 3 carte random (iniziali) per una nuova partita
+// 1. Ottieni 3 carte random iniziali per una nuova partita
 app.get('/api/game/init-cards', isLoggedIn, async (req, res) => {
   try {
     const usedIds = req.query.exclude ? req.query.exclude.split(',').map(Number) : [];
@@ -93,7 +92,7 @@ app.get('/api/game/init-cards', isLoggedIn, async (req, res) => {
     res.json(cards);
   } catch (err) {
     console.error("Error in /api/game/init-cards:", err);
-    res.status(500).end();
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 
@@ -105,11 +104,11 @@ app.post('/api/game', isLoggedIn, async (req, res) => {
     res.json({ game_id });
   } catch (err) {
     console.error("Error in /api/game (POST):", err);
-    res.status(500).json({ error: `Database error during game creation: ${err}` });
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 
-// 3. Recupera le carte iniziali in una partita
+// 3. Ottiene le carte iniziali in una partita
 app.get('/api/game/:game_id/init-cards', isLoggedIn, async (req, res) => {
   try {
     const game_id = req.params.game_id;
@@ -117,11 +116,11 @@ app.get('/api/game/:game_id/init-cards', isLoggedIn, async (req, res) => {
     res.json(cards);
   } catch (err) {
     console.error("ERRORE getInitialCards:", err);
-    res.status(500).json({ error: `Database error during initial card retrieval: ${err}` });
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 
-// Salva le carte iniziali per una partita
+// 4. Salva le carte iniziali per una partita
 app.post('/api/game/:game_id/init-cards', isLoggedIn, async (req, res) => {
   try {
     const game_id = req.params.game_id;
@@ -130,11 +129,11 @@ app.post('/api/game/:game_id/init-cards', isLoggedIn, async (req, res) => {
     res.status(201).end();
   } catch (err) {
     console.error("ERRORE addInitialCards:", err);
-    res.status(500).json({ error: `Database error during initial card assignment: ${err}` });
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 
-// 4. Ottieni la situazione da indovinare (una card non tra quelle già usate/iniziali/vinte)
+// 5. Ottieni la situazione da indovinare (una card non tra quelle già presenti o utilizzate)
 app.get('/api/game/:game_id/situation', isLoggedIn, async (req, res) => {
   try {
     const game_id = req.params.game_id;
@@ -153,11 +152,11 @@ app.get('/api/game/:game_id/situation', isLoggedIn, async (req, res) => {
 
   } catch (err) {
     console.error("Errore get situation:", err);
-    res.status(500).end();
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 
-// 5. Aggiungi un nuovo round alla partita
+// 6. Aggiungi un nuovo round alla partita
 app.post('/api/game/:game_id/round', isLoggedIn, async (req, res) => {
   try {
     const { card_id, round_number } = req.body;
@@ -165,11 +164,11 @@ app.post('/api/game/:game_id/round', isLoggedIn, async (req, res) => {
     res.json({ round_id });
   } catch (err) {
     console.error('Errore aggiunta round:', err);
-    res.status(500).json({ error: `Database error during adding round: ${err}` });
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 
-// 6. Aggiorna esito del round
+// 7. Aggiorna esito del round
 app.put('/api/game/round/:round_id', isLoggedIn, async (req, res) => {
   try {
     const { guessed_correctly, chosen_position } = req.body;
@@ -177,48 +176,47 @@ app.put('/api/game/round/:round_id', isLoggedIn, async (req, res) => {
     res.status(200).end();
   } catch (err) {
     console.error("Error in /api/game/round/:round_id (PUT):", err);
-    res.status(500).json({ error: `Database error during round update: ${err}` });
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 
-// 7. Ottieni tutte le carte vinte in una partita
+// 8. Ottieni tutte le carte vinte in una partita
 app.get('/api/game/:game_id/won-cards', isLoggedIn, async (req, res) => {
   try {
     const cards = await gameDao.getWonCardsInGame(req.params.game_id);
     res.json(cards);
   } catch (err) {
     console.error("Error in /api/game/:game_id/won-cards:", err);
-    res.status(500).end();
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 
-// 8. Storico partite utente
-app.get('/api/game/user/:user_id', isLoggedIn, async (req, res) => { // Nota: cambiato da user=:user_id a user/:user_id per coerenza REST
+// 9. Cronologia partite utente
+app.get('/api/game/user/:user_id', isLoggedIn, async (req, res) => { 
   try {
-    // Assicurati che l'utente loggato possa accedere solo al proprio storico o sia un admin
-    if (req.user.id !== parseInt(req.params.user_id, 10) /* && !req.user.isAdmin */) {
-        // return res.status(403).json({ error: "Forbidden: You can only access your own game history." });
+    if (req.user.id !== parseInt(req.params.user_id, 10)) { 
+      return res.status(403).json({ error: "Forbidden" });
     }
     const games = await gameDao.getGamesByUser(req.params.user_id);
     res.json(games);
   } catch (err) {
     console.error("Error in /api/game/user/:user_id:", err);
-    res.status(500).end();
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 
-// 9. Dettaglio cronologia di una partita
+// 10. Dettaglio cronologia di una partita
 app.get('/api/game/:game_id/history', isLoggedIn, async (req, res) => {
   try {
     const history = await gameDao.getGameHistory(req.params.game_id);
     res.json(history);
   } catch (err) {
     console.error("Error in /api/game/:game_id/history:", err);
-    res.status(500).end();
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 
-// 10. Aggiorna stato partita (vinta/persa)
+// 11. Aggiorna stato partita (vinta/persa)
 app.put('/api/game/:game_id/status', isLoggedIn, async (req, res) => {
   try {
     const { status } = req.body;
@@ -226,13 +224,11 @@ app.put('/api/game/:game_id/status', isLoggedIn, async (req, res) => {
     res.status(200).end();
   } catch (err) {
     console.error("Error in /api/game/:game_id/status (PUT):", err);
-    res.status(500).json({ error: `Database error during game status update: ${err}` });
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 
-
-
-// 11. Ottieni i dati di una singola partita (summary)
+// 12. Ottieni i dati di una singola partita (summary)
 app.get('/api/game/:game_id', isLoggedIn, async (req, res) => {
   try {
     const game = await gameDao.getGameById(req.params.game_id);
@@ -243,27 +239,26 @@ app.get('/api/game/:game_id', isLoggedIn, async (req, res) => {
     res.json(game);
   } catch (err) {
     console.error("Error in /api/game/:game_id (GET):", err);
-    res.status(500).json({ error: `Database error during game fetch: ${err}` });
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 
-// --- DEMO (pubblica, NO login) ---
-
-// 12. Partita demo: 3 carte iniziali + 1 situazione random
+//DEMO (NO login)
+// 13. Partita demo: 3 carte iniziali + 1 situazione random
 app.get('/api/demo', async (req, res) => {
   try {
     const result = await gameDao.getDemoCards();
     res.json(result);
   } catch (err) {
     console.error("Error in /api/demo:", err);
-    res.status(500).end();
+    res.status(500).json({ error: err.message || String(err) });
   }
 });
 
-// --- Not found handler ---
+//Not found handler
 app.use((req, res) => {
   res.status(404).json({ error: 'Endpoint not found' });
 });
 
-// --- Avvia server ---
+//Avvia server
 app.listen(port, () => { console.log(`API server started at http://localhost:${port}`); });

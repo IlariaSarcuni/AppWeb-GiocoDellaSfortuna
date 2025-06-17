@@ -1,24 +1,22 @@
 import React, { useState, useEffect } from 'react';
-import { Container, Row, Col, Alert, Button, Table } from 'react-bootstrap'; // Rimosso Spinner dall'import
+import { Container, Row, Col, Alert, Button, Table } from 'react-bootstrap'; 
 import { Link } from 'react-router';
 import API from '../API.mjs';
 import dayjs from 'dayjs';
 
 function UserHistory(props) {
   const [gamesList, setGamesList] = useState([]);
-  const [loadingGamesList, setLoadingGamesList] = useState(true); // Mantenuto per la logica condizionale
+  const [loadingGamesList, setLoadingGamesList] = useState(true); 
   const [error, setError] = useState(null);
   const [currentUser, setCurrentUser] = useState(props.user);
-
   const [expandedGameDetails, setExpandedGameDetails] = useState({});
-  const [loadingDetailsForGame, setLoadingDetailsForGame] = useState(null); // Mantenuto per disabilitare il bottone
+  const [loadingDetailsForGame, setLoadingDetailsForGame] = useState(null); //Indica se i dettagli di una specifica partita sono in caricamento (usato per disabilitare il bottone)
 
   useEffect(() => {
     if (!currentUser && props.loggedIn) {
       API.getUserInfo()
         .then(user => setCurrentUser(user))
-        .catch(err => {
-          console.error("Errore recupero utente:", err);
+        .catch(() => {
           setError("Impossibile recuperare le informazioni dell'utente.");
           setLoadingGamesList(false);
         });
@@ -27,6 +25,7 @@ function UserHistory(props) {
     }
   }, [currentUser, props.user, props.loggedIn]);
 
+  //Cronologia partite
   useEffect(() => {
     if (currentUser && currentUser.id) {
       setLoadingGamesList(true);
@@ -35,33 +34,36 @@ function UserHistory(props) {
         .then((gamesData) => {
           setGamesList(gamesData);
         })
-        .catch(err => {
+        .catch(() => {
           setError("Errore nel recupero della cronologia partite.");
-          console.error(err);
           setGamesList([]);
         })
         .finally(() => {
-          setLoadingGamesList(false);
+          setLoadingGamesList(false); //Termina il caricamento della lista partite
         });
+    //Pulisce lo stato quando un utente effettua il logout
     } else if (!currentUser && !props.loggedIn) {
         setGamesList([]);
         setLoadingGamesList(false);
     }
   }, [currentUser, props.loggedIn]);
 
+  //----- Funzioni Handler -----
+
+  //Mostrare/nascondere i dettagli di una specifica partita
   const toggleGameDetails = async (gameId) => {
     const currentDetailState = expandedGameDetails[gameId];
-
+    //Se i dettagli sono già visibili, li nasconde
     if (currentDetailState?.visible) {
       setExpandedGameDetails(prev => ({ ...prev, [gameId]: { ...currentDetailState, visible: false } }));
       return;
     }
-
+    //Rende visibili i dettagli che sono già stati caricati ma non sono visibili
     if (currentDetailState?.data && !currentDetailState.visible) {
        setExpandedGameDetails(prev => ({ ...prev, [gameId]: { ...currentDetailState, visible: true } }));
        return;
-    }
-
+    }  
+    //carica i dettagli
     setLoadingDetailsForGame(gameId);
 
     try {
@@ -93,50 +95,39 @@ function UserHistory(props) {
     }
   };
 
-  // Rimosso il blocco di caricamento iniziale con Spinner
-  // if (loadingGamesList && !gamesList.length) {
-  //   return <Container className="text-center mt-5"><Spinner animation="border" /> <p>Caricamento cronologia...</p></Container>;
-  // }
-
+  //Se l'utente non è loggato  
   if (!props.loggedIn && !currentUser) {
     return (
       <Container className="mt-4">
-        <Alert variant="warning">
-          Devi effettuare il login per visualizzare il tuo profilo e la cronologia delle partite.
-        </Alert>
+        <Alert variant="warning">Devi effettuare il login per visualizzare il tuo profilo e la cronologia delle partite.</Alert>
         <Row className="mt-3">
           <Col className="text-center">
-            <Link to="/">
-              <Button variant="secondary">Torna alla Home</Button>
-            </Link>
+            <Link className="btn btn-secondary" to="/">Torna alla Home</Link>
           </Col>
         </Row>
       </Container>
     );
   }
-  
-  if (error && !gamesList.length && !loadingGamesList) { // Aggiunto !loadingGamesList per evitare flash di errore durante il caricamento iniziale
+  //Se c'è un errore
+  if (error && !gamesList.length && !loadingGamesList) { 
     return (
       <Container className="mt-4">
         <Alert variant="danger">{error}</Alert>
         <Row className="mt-3">
           <Col className="text-center">
-            <Link to="/">
-              <Button variant="secondary">Torna alla Home</Button>
-            </Link>
+            <Link className="btn btn-secondary" to="/">Torna alla Home</Link>
           </Col>
         </Row>
       </Container>
     );
   }
 
+    //Rendering Principale
   return (
     <Container className="mt-4 mb-5">
       <Row className="mb-3">
         <Col>
-          <Link to="/">
-            <Button variant="secondary">Torna alla Home</Button>
-          </Link>
+          <Link className="btn btn-secondary" to="/">Torna alla Home</Link>
         </Col>
       </Row>
       <Row>
@@ -145,14 +136,10 @@ function UserHistory(props) {
           {currentUser && <p className="lead">Benvenuto/a, {currentUser.name || currentUser.email}!</p>}
           <hr />
           <h3 className="mt-4 mb-3">Cronologia Partite</h3>
+
           {error && <Alert variant="danger" className="mb-2">{error}</Alert>}
-
-          {loadingGamesList && gamesList.length === 0 && ( // Mostra un messaggio di caricamento semplice se la lista è vuota e sta caricando
-            <p>Caricamento cronologia...</p>
-          )}
-
-          {!loadingGamesList && gamesList.length === 0 && !error ? (
-            <Alert variant="info">Non hai ancora completato nessuna partita.</Alert>
+          {loadingGamesList && gamesList.length === 0 && (<p>Caricamento cronologia...</p>)}
+          {!loadingGamesList && gamesList.length === 0 && !error ? (<Alert variant="info">Non hai ancora completato nessuna partita.</Alert>
           ) : !loadingGamesList && gamesList.length > 0 ? ( // Mostra la tabella solo se non sta caricando e ci sono partite
             <Table striped bordered hover responsive className="mt-3 shadow-sm">
               <thead className="table-light">
@@ -163,6 +150,7 @@ function UserHistory(props) {
                 </tr>
               </thead>
               <tbody>
+                {/* Mappa l'array 'gamesList' per creare una riga per ogni partita */}
                 {gamesList.map(game => {
                   const gameDetailEntry = expandedGameDetails[game.game_id];
                   const isLoadingThisGameDetails = loadingDetailsForGame === game.game_id;
@@ -177,15 +165,15 @@ function UserHistory(props) {
                           </span>
                         </td>
                         <td>
+                          {/* Pulsante per mostrare/nascondere i dettagli della partita */}
                           <Button
                             variant="primary"
                             size="sm"
                             onClick={() => toggleGameDetails(game.game_id)}
-                            disabled={isLoadingThisGameDetails} // Mantenuto per disabilitare il bottone durante il caricamento dei dettagli
+                            disabled={isLoadingThisGameDetails} //disabilitare il bottone durante il caricamento dei dettagli
                             aria-expanded={gameDetailEntry?.visible}
                             aria-controls={`details-game-${game.game_id}`}
                           >
-                            {/* Rimosso Spinner dal bottone */}
                             {gameDetailEntry?.visible ? "Nascondi dettagli" : "Mostra dettagli"}
                           </Button>
                         </td>
@@ -193,15 +181,12 @@ function UserHistory(props) {
                       {gameDetailEntry?.visible && (
                         <tr id={`details-game-${game.game_id}`}>
                           <td colSpan="3" className="p-3 bg-light"> 
-                            {/* Rimosso Spinner dalla sezione dettagli */}
+            
                             {gameDetailEntry.error ? (
                               <Alert variant="danger" className="mb-0">{gameDetailEntry.error}</Alert>
                             ) : gameDetailEntry.data ? (
                               <div>
-                                <h5 className="mb-3">
-                                  Carte totali raccolte: {gameDetailEntry.data.total_cards_collected}
-                                </h5>
-                                
+                                <h5 className="mb-3">Carte totali raccolte: {gameDetailEntry.data.total_cards_collected}</h5>                                
                                 {gameDetailEntry.data.initial_cards && gameDetailEntry.data.initial_cards.length > 0 && (
                                   <div className="mb-3">
                                     <h6>Carte iniziali:</h6>

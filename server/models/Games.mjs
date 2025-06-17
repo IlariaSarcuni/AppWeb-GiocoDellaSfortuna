@@ -1,6 +1,5 @@
 import dayjs from 'dayjs';
 
-// Costruttore per Card
 function Card(card_id, description, image, misfortune_index) {
   this.card_id = card_id;
   this.description = description;
@@ -8,16 +7,13 @@ function Card(card_id, description, image, misfortune_index) {
   this.misfortune_index = misfortune_index;
 }
 
-// Costruttore per Game
 function Game(game_id, user_id, date, status = 'ongoing') {
   this.game_id = game_id;
   this.user_id = user_id;
   this.date = dayjs(date);
   this.status = status;
-  // NB: le carte e i round si ottengono tramite join su altre tabelle (initial_game_cards, rounds)
-}
+ }
 
-// Costruttore per Round
 function Round(round_id, game_id, card_id, round_number, guessed_correctly, chosen_position, time) {
   this.round_id = round_id;
   this.game_id = game_id;

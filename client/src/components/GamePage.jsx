@@ -7,14 +7,12 @@ import '../index.css';
 function sortCards(cards) {
   return [...cards].sort((a, b) => a.misfortune_index - b.misfortune_index);
 }
-
+//Variabile globale per prevenire avvii multipli della partita
 let isGameSetupInProgress = false;
 
 function GamePage(props) {
   const [loading, setLoading] = useState(false);
-  const [isCreatingGameState, setIsCreatingGameState] = useState(false);
-  // Rimosso: const initialCardsStateRef = useRef([]);
-
+  const [isCreatingGameState, setIsCreatingGameState] = useState(false); //Flag per il caricamento durante la creazione iniziale della partita
   const [initialCards, setInitialCards] = useState([]);
   const [situation, setSituation] = useState(null);
   const [gameId, setGameId] = useState(null);
@@ -25,18 +23,19 @@ function GamePage(props) {
   const [roundNumber, setRoundNumber] = useState(1);
   const [numWon, setNumWon] = useState(0);
   const [numLost, setNumLost] = useState(0);
-  const [gameOver, setGameOver] = useState(false);
+  const [gameOver, setGameOver] = useState(false); //Flag che indica se la partita è terminata
   const [status, setStatus] = useState("ongoing");
   const [wonCards, setWonCards] = useState([]);
   const [allCards, setAllCards] = useState([]);
-  const [isFirstLoad, setIsFirstLoad] = useState(true);
-  const [playedCards, setPlayedCards] = useState([]);
-  // Rimosso: const roundIdRef = useRef(null);
-
+  const [isFirstLoad, setIsFirstLoad] = useState(true); //Flag per gestire il primo caricamento della partita
+  const [playedCards, setPlayedCards] = useState([]); //Array delle carte giocate (per riepilogo)
   const navigate = useNavigate();
 
   useEffect(() => {
+    //Non fa partire il timer se c'è un caricamento, se il risultato è mostrato, se la partita è finita,
+    //se non c'è un gameId, o se la partita è in fase di creazione
     if (loading || showResult || gameOver || !gameId || isCreatingGameState) return;
+    //Se il timer arriva a 0, sottomette automaticamente il round
     if (timer <= 0) {
       handleSubmit(null, true);
       return;
@@ -46,19 +45,18 @@ function GamePage(props) {
   }, [timer, loading, showResult, gameOver, gameId, isCreatingGameState]);
 
   function handlePositionChange(e) {
-    setChosenPos(Number(e.target.value));
+    setChosenPos(Number(e.target.value)); //Converte il valore in numero
   }
 
   async function handleStartGame() {
-    if (isGameSetupInProgress) {
+    if (isGameSetupInProgress) { //Previene avvii multipli se un avvio è già in corso
       return;
     }
 
     isGameSetupInProgress = true;
     setIsCreatingGameState(true);
     setLoading(true);
-    setFeedback(null); // Pulisce feedback precedenti
-
+    setFeedback(null);
     setGameOver(false);
     setStatus("ongoing");
     setTimer(30);
@@ -69,7 +67,7 @@ function GamePage(props) {
     setNumLost(0);
     setWonCards([]);
     setAllCards([]);
-    setGameId(null); // Resetta gameId all'inizio
+    setGameId(null); //Assicura che gameId sia null prima di crearne uno nuovo
 
     try {
       const { game_id } = await API.createGame();
@@ -79,15 +77,13 @@ function GamePage(props) {
       const sortedInitCards = sortCards(initCardsData);
       setInitialCards(sortedInitCards);
       setAllCards(sortedInitCards);
-      // Rimosso: initialCardsStateRef.current = sortedInitCards;
 
       await API.saveInitialCards(game_id, initCardsData.map(c => c.card_id));
-
       const sit = await API.getSituation(game_id);
-      setSituation(sit);
       
-      setWonCards([]);
-      setIsFirstLoad(false);
+      setSituation(sit);      
+      setWonCards([]); //Resetta le carte vinte
+      setIsFirstLoad(false); //Caricamento iniziale è completo
 
     } catch (err) {
       const errorMessage = err?.message || ('Errore sconosciuto durante la creazione della partita.');
@@ -99,10 +95,10 @@ function GamePage(props) {
       setLoading(false);
     }
   }
-  
+  //Gestisce la sottomissione della scelta dell'utente
   async function handleSubmit(e, timeout = false) {
     if (e) e.preventDefault();
-    setFeedback(null); // Pulisce feedback precedenti prima di validare/sottomettere
+    setFeedback(null); // Pulisce feedback precedenti prima di sottomettere
 
     if (loading || !situation || situation.misfortune_index == null) {
       setFeedback({ type: "danger", msg: "La situazione non è pronta. Riprova." });
@@ -111,20 +107,20 @@ function GamePage(props) {
       return;
     }
     if (chosenPos === null && !timeout) {
-      setFeedback({ type: "danger", msg: "Seleziona una posizione!" }); // Verrà mostrato vicino al form
+      setFeedback({ type: "danger", msg: "Seleziona una posizione!" }); 
       return;
     }
 
+    //Determina la posizione corretta
     let misfortuneIndex = situation.misfortune_index;
-    let sorted = sortCards(allCards);
+    let sorted = sortCards(allCards); //Carte possedute ordinate
     let pos = 0;
     while (pos < sorted.length && misfortuneIndex > sorted[pos].misfortune_index) pos++;
+    //Verifica se la posizione scelta dall'utente è corretta
     const guessedCorrectly = !timeout && pos === chosenPos;
 
     try {
       const { round_id } = await API.addRound(gameId, situation.card_id, roundNumber);
-      // Rimosso: roundIdRef.current = round_id;
-
       await API.updateRoundResult(round_id, guessedCorrectly ? 1 : 0, chosenPos);
 
       if (guessedCorrectly) {
@@ -171,7 +167,7 @@ function GamePage(props) {
     setLoading(true);
     setChosenPos(null);
     setTimer(30);
-    setFeedback(null); // Pulisce feedback precedenti
+    setFeedback(null); 
     setShowResult(false);
 
     try {
@@ -179,7 +175,7 @@ function GamePage(props) {
       setSituation(sit);
       setRoundNumber(rn => rn + 1);
     } catch (err) { 
-      const errorMessage = err?.message || (typeof err === 'string' ? err : 'Errore sconosciuto durante il caricamento della situazione.');
+      const errorMessage = err?.message || ('Errore sconosciuto durante il caricamento della situazione.');
       setFeedback({ type: "danger", msg: `Errore nel caricamento della situazione: ${errorMessage}. Riprova.` });
     }
     setLoading(false);
@@ -193,10 +189,9 @@ function GamePage(props) {
     if (!gameId && isFirstLoad && !isGameSetupInProgress && !feedback) { 
       handleStartGame();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [gameId, isFirstLoad, feedback]); // Modificato: aggiunto feedback alle dipendenze
+  }, [gameId, isFirstLoad, feedback]); 
 
-
+  //Funzione per renderizzare l'elenco delle carte
   function renderCardList() {
     const sorted = sortCards(allCards);
     return (
@@ -245,6 +240,7 @@ function GamePage(props) {
     );
   }
 
+  //Messaggio di fine partita 
   function renderEndMessage() {
     if (status === "win") {
       return (
@@ -272,7 +268,7 @@ function GamePage(props) {
         </>
       );
     }
-    return null;
+    return null; //Non mostra nulla se la partita è ancora in corso
   }
   
   // Schermata di caricamento iniziale per la creazione della partita
@@ -287,19 +283,17 @@ function GamePage(props) {
       );
   }
 
-  
-
+  //Rendering principale
   return (
     <Container className="mt-3 mb-3">
-      {/* Spinner di caricamento generico (es. durante handleNextRound) */}
+      {/* Spinner di caricamento*/}
       {loading && !isCreatingGameState && 
         <Container className="text-center mt-5">
-          <Spinner animation="border" />
-          <p>Caricamento...</p>
+          <Spinner animation="border"/><p>Caricamento...</p>
         </Container>
       }
 
-      {/* Interfaccia di gioco principale (mostrata solo se gameId esiste e non c'è un caricamento critico) */}
+      {/* Interfaccia di gioco principale */}
       {gameId && !loading && (
         <Row>
           <Col md={8} className="mx-auto">
@@ -309,12 +303,9 @@ function GamePage(props) {
                 {renderCardList()}
               </div>
               <div>
-                <p className="fw-bold fs-4">
-                  Carte raccolte: {allCards.length} / 6 &nbsp; | &nbsp; Errori: {numLost} / 3
-                </p>
+                <p className="fw-bold fs-4">Carte raccolte: {allCards.length} / 6 &nbsp; | &nbsp; Errori: {numLost} / 3</p>
               </div>
 
-              {/* Alert per errori non legati al risultato del form (es. fallimento caricamento situazione) */}
               {feedback && !showResult && feedback.type === 'danger' && feedback.msg !== "Seleziona una posizione!" && (
                 <Alert variant="danger" className="mt-3">{feedback.msg}</Alert>
               )}
@@ -322,15 +313,17 @@ function GamePage(props) {
               {!gameOver && situation && (
                 <>
                   <ProgressBar now={timer * 100 / 30} label={`${timer}s`} variant={timer > 10 ? "success" : "danger"} className="mb-3" />
+                  
+                  {/* Form per la scelta della posizione: */}
                   {!showResult && (
                     <Form onSubmit={handleSubmit}>
-                      {/* Alert per validazione "Seleziona una posizione!" */}
                       {feedback && feedback.msg === "Seleziona una posizione!" && !showResult && (
                         <Alert variant="warning" className="mt-0 mb-3">{feedback.msg}</Alert>
                       )}
                       <Form.Group>
                         <Form.Label>Qual è la posizione corretta?</Form.Label>
                         <div>
+                          {/* Il numero di opzioni è pari al numero di carte possedute + 1 */}
                           {Array(allCards.length + 1).fill(0).map((_, i) => (
                             <Form.Check
                               inline
@@ -345,29 +338,25 @@ function GamePage(props) {
                               name="position"
                               type="radio"
                               value={i}
-                              checked={chosenPos === i}
-                              onChange={handlePositionChange}
+                              checked={chosenPos === i} //Controlla se questa opzione è quella selezionata
+                              onChange={handlePositionChange} //Gestore per il cambio di selezione
                               disabled={showResult || loading}
                             />
                           ))}
                         </div>
                       </Form.Group>
-                      <Button type="submit" className="mt-3 mb-3" disabled={showResult || loading}>
-                        Conferma
-                      </Button>
+                      <Button type="submit" className="mt-3 mb-3" disabled={showResult || loading}>Conferma</Button>
                     </Form>
                   )}
                   
-                  {/* Feedback dopo aver sottomesso il form (successo/errore/timeout) */}
+                  {/* Feedback dopo aver sottomesso il form */}
                   {feedback && showResult && (
                     <>
                       <Alert variant={feedback.type} className="mt-3">
                         {feedback.msg} {feedback.extra && <div>{feedback.extra}</div>}
                       </Alert>
-                      {!gameOver && ( // Mostra "Prossimo round" solo se il gioco non è finito
-                        <Button className="mt-2 mb-3" onClick={handleNextRound} disabled={loading}>
-                          Prossimo round
-                        </Button>
+                      {!gameOver && ( // Mostra "Prossimo round" solo se la partita non è finita
+                        <Button className="mt-2 mb-3" onClick={handleNextRound} disabled={loading}>Prossimo round</Button>
                       )}
                     </>
                   )}
