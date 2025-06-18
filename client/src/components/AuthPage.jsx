@@ -6,11 +6,13 @@ function LoginForm(props) {
     const [state, formAction, isPending] = useActionState(loginFunction, {username: '', password: ''});
 
     async function loginFunction(prevState, formData) {
+        //Estrae le credenziali dal form
         const credentials = {
             username: formData.get('username'),
             password: formData.get('password'),
         };
 
+        //Login tramite la funzione passata via props
         try {
             await props.handleLogin(credentials);
             return { success: true };

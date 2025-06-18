@@ -122,7 +122,7 @@ function UserHistory(props) {
     );
   }
 
-    //Rendering Principale
+  //Rendering Principale
   return (
     <Container className="mt-4 mb-5">
       <Row className="mb-3">

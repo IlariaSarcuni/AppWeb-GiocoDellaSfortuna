@@ -54,7 +54,7 @@ API HTTP progettate e implementate nel progetto.
 **Request body**: un oggetto JSON con le credenziali dell'utente
 ```json
 {
-  "email": "ilaria@polito.it",
+  "username": "ilaria@polito.it",
   "password": "Ilaria00!"
 }
 ```

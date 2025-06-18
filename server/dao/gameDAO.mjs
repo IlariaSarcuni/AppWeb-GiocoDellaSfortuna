@@ -24,6 +24,7 @@ export default function GameDao() {
         return new Promise((resolve, reject) => {
             let query = 'SELECT * FROM cards';
             let params = [];
+            // Controlla se l'array excludeIds contiene qualcosa
             if (excludeIds.length) {
                 query += ` WHERE card_id NOT IN (${excludeIds.map(() => '?').join(",")})`;
                 params = excludeIds;
@@ -57,6 +58,7 @@ export default function GameDao() {
     // Ottieni più carte tramite una lista di id
     this.getCardsByIds = (card_ids) => {
         return new Promise((resolve, reject) => {
+            //termina se l'array card_ids è vuoto
             if (!card_ids.length) return resolve([]);
             const query = `SELECT * FROM cards WHERE card_id IN (${card_ids.map(() => '?').join(",")})`;
             db.all(query, card_ids, (err, rows) => {
@@ -259,14 +261,14 @@ export default function GameDao() {
     };
 
     // DEMO: ottieni 3 carte iniziali casuali e 1 situazione da indovinare
-    this.getDemoCards = () => {
+    this.getDemoCards = () => { //non prende argomenti perché non ha bisogno di informazioni esterne come un game_id
         return new Promise((resolve, reject) => {
             db.all('SELECT * FROM cards', (err, rows) => {
                 if (err) return reject(err);
                 const cards = mapRowsToCards(rows);
-                const initialCards = getRandomValues(cards, 3);
+                const initialCards = getRandomValues(cards, 3); //array contenente gli ID delle 3 carte iniziali
                 const initialIds = initialCards.map(c => c.card_id);
-                const remaining = cards.filter(c => !initialIds.includes(c.card_id));
+                const remaining = cards.filter(c => !initialIds.includes(c.card_id)); //crea un nuovo array senza le 3 carte già pescate
                 const roundCard = getRandomValues(remaining, 1)[0];
                 resolve({ initialCards, roundCard });
             });
