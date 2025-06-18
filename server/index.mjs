@@ -26,7 +26,7 @@ app.use(cors(corsOptions));
 
 app.use('/img', express.static('img'))
 
-//Autwnticazione
+//Autenticazione
 passport.use(new LocalStrategy(async function verify(username, password, cb) {
   const user = await getUser(username, password);
   if(!user)

@@ -5,8 +5,8 @@
 ## React Client Application Routes
 
 - Route `/`  
-  **Contenuto:** Home page dell’applicazione.  
-  **Scopo:** Introduce il gioco e fornisce istruzioni all’utente.  
+  **Contenuto:** Home page dell’applicazione web.  
+  **Scopo:** Introduce il gioco e fornisce istruzioni all’utente. Presenta un pulsante per giocare una demo nel caso di utenti non autenticati e pulsanti per iniziare una nuova partita e visionare il proprio profilo utente nel caso si è autenticati.  
   **Accesso:** Pubblico (sia utenti autenticati che non autenticati).
 
 - Route `/demo`  
@@ -25,7 +25,7 @@
   **Accesso:** Solo utenti autenticati.  
   
 - Route `/history`  
-  **Contenuto:** Cronologia delle partite dell’utente.  
+  **Contenuto:** Profilo utente con cronologia delle partite.  
   **Scopo:** Visualizza tutte le partite giocate dall’utente con i relativi dettagli.  
   **Accesso:** Solo utenti autenticati.  
 
@@ -39,7 +39,7 @@
   **Scopo:** Mostra un messaggio per rotte non esistenti.  
   **Accesso:** Pubblico.
 
-## API Server
+
 ## API Server
 API HTTP progettate e implementate nel progetto.
 
@@ -54,11 +54,10 @@ API HTTP progettate e implementate nel progetto.
 **Request body**: un oggetto JSON con le credenziali dell'utente
 ```json
 {
-  "username": "usera@polito.it",
-  "password": "password"
+  "email": "ilaria@polito.it",
+  "password": "Ilaria00!"
 }
 ```
-
 **Risposta**: `201 Created` (successo), `401 Unauthorized` (credenziali errate), `500 Internal Server Error` (errore generico)
 
 **Response body**: in caso di successo, restituisce un oggetto JSON con i dettagli dell'utente
@@ -103,70 +102,36 @@ API HTTP progettate e implementate nel progetto.
 
 ---
 
-### **Ottenere 3 carte iniziali per una nuova partita**
-
-**URL**: `/api/game/init-cards`
-
-**HTTP Method**: GET
-
-**Descrizione**: recupera 3 carte casuali per una nuova partita, escludendo quelle già utilizzate se specificato.
-
-**Query Params**: `exclude` (opzionale) - una stringa di ID di carte separati da virgola da escludere.
-
-**Risposta**: `200 OK` (successo), `500 Internal Server Error` (errore generico).
-
-**Response body**: Un array di tre oggetti **carta**.
-```json
-[
-  {
-    "card_id": 5,
-    "description": "La stampante non funziona quando devi consegnare",
-    "image": "stampante.jpg",
-    "misfortune_index": 50.0
-  },
-  {
-    "card_id": 12,
-    "description": "Perdi il treno per 10 secondi",
-    "image": "treno.jpg",
-    "misfortune_index": 35.5
-  },
-  {
-    "card_id": 21,
-    "description": "Il tuo youtuber preferito non pubblica video da un mese",
-    "image": "youtube.jpg",
-    "misfortune_index": 5.0
-  }
-]
-```
-
 ### **Creare una nuova partita**
 
 **URL**: `/api/game`
 
 **HTTP Method**: POST
 
-**Descrizione**: crea una nuova **partita** per l'utente autenticato
+**Descrizione**: crea una nuova partita per l'utente autenticato
 
 **Request body**: _Vuoto_
 
 **Risposta**: `200 OK` (successo, con l'ID della partita creata), `500 Internal Server Error` (errore generico)
 
-**Response body**: in caso di successo, restituisce l'ID della **partita** appena creata
+**Response body**: in caso di successo, restituisce l'ID della partita appena creata
 ```json
 { "game_id": 11 }
 ```
 
-### **Ottenere le carte iniziali di una partita**
+### **Ottenere 3 carte iniziali per una nuova partita (stateless)**
 
-**URL**: `/api/game/:game_id/init-cards`
+**URL**: `/api/game/init-cards`
 
 **HTTP Method**: GET
 
-**Descrizione**: recupera le tre **carte iniziali** assegnate a una partita specifica
+**Descrizione**: recupera 3 carte casuali per una nuova partita
 
-**Risposta**: `200 OK` (successo), `404 Not Found` (partita non esistente), `500 Internal Server Error` (errore generico).
+**Query Params**: `exclude` (opzionale) - una stringa di ID di carte da escludere durante i successivi round della partita
 
-**Response body**: Un array di tre oggetti **carta**.
+**Risposta**: `200 OK` (successo), `500 Internal Server Error` (errore generico)
+
+**Response body**: Un array di tre oggetti 'card'.
 ```json
 [
   {
@@ -177,35 +142,68 @@ API HTTP progettate e implementate nel progetto.
   },
   {
     "card_id": 12,
-    "description": "Perdi il treno per 10 secondi",
-    "image": "treno.jpg",
-    "misfortune_index": 35.5
+    "description": "Il relatore di tesi non risponde alle tue email",
+    "image": "tesi.jpg",
+    "misfortune_index": 77.0
   },
   {
     "card_id": 21,
-    "description": "Il tuo youtuber preferito non pubblica video da un mese",
-    "image": "youtube.jpg",
+    "description": "La macchinetta del caffè si mangia le monete",
+    "image": "monete.jpg",
     "misfortune_index": 5.0
   }
 ]
 ```
 
-### **Salvare le carte iniziali per una partita**
+### **Ottenere le carte iniziali di una partita (stateful)**
+
+**URL**: `/api/game/:game_id/init-cards`
+
+**HTTP Method**: GET
+
+**Descrizione**: recupera le tre carte iniziali assegnate a una partita specifica
+
+**Risposta**: `200 OK` (successo), `404 Not Found` (partita non esistente), `500 Internal Server Error` (errore generico).
+
+**Response body**: Un array di tre oggetti 'card'
+```json
+[
+  {
+    "card_id": 5,
+    "description": "La stampante non funziona quando devi consegnare",
+    "image": "stampante.jpg",
+    "misfortune_index": 50.0
+  },
+  {
+    "card_id": 12,
+    "description": "Il relatore di tesi non risponde alle tue email",
+    "image": "tesi.jpg",
+    "misfortune_index": 77.0
+  },
+  {
+    "card_id": 21,
+    "description": "La macchinetta del caffè si mangia le monete",
+    "image": "monete.jpg",
+    "misfortune_index": 5.0
+  }
+]
+```
+
+### **Salvare le carte iniziali di una partita**
 
 **URL**: `/api/game/:game_id/init-cards`
 
 **HTTP Method**: POST
 
-**Descrizione**: salva le **carte iniziali** scelte per una partita.
+**Descrizione**: salva le carte iniziali scelte per una partita
 
-**Request body**: un oggetto JSON con gli ID delle carte.
+**Request body**: un oggetto JSON con gli ID delle carte
 ```json
 {
   "card_ids": [5, 12, 21]
 }
 ```
-
-**Risposta**: `201 Created` (successo), `500 Internal Server Error` (errore generico).
+**Risposta**: `201 Created` (successo), `500 Internal Server Error` (errore generico)
 
 **Response body**: _Nessuno_
 
@@ -215,11 +213,11 @@ API HTTP progettate e implementate nel progetto.
 
 **HTTP Method**: GET
 
-**Descrizione**: recupera la **carta** per il round corrente di una partita
+**Descrizione**: recupera la carta pe il round corrente di una partita
 
 **Risposta**: `200 OK` (successo), `404 Not Found` (partita non esistente o nessuna carta disponibile), `500 Internal Server Error` (errore generico)
 
-**Response body**: Un singolo oggetto **carta**.
+**Response body**: Un singolo oggetto 'card'.
 ```json
 {
   "card_id": 28,
@@ -235,7 +233,7 @@ API HTTP progettate e implementate nel progetto.
 
 **HTTP Method**: POST
 
-**Descrizione**: crea un nuovo **round** per una data partita
+**Descrizione**: crea un nuovo round per una data partita
 
 **Request body**: un oggetto JSON con i dettagli del round
 ```json
@@ -244,10 +242,9 @@ API HTTP progettate e implementate nel progetto.
   "round_number": 1
 }
 ```
-
 **Risposta**: `200 OK` (successo, con l'ID del round creato), `500 Internal Server Error` (errore generico)
 
-**Response body**: in caso di successo, restituisce l'ID del nuovo **round**
+**Response body**: in caso di successo, restituisce l'ID del nuovo round
 ```json
 { "round_id": 31 }
 ```
@@ -258,7 +255,7 @@ API HTTP progettate e implementate nel progetto.
 
 **HTTP Method**: PUT
 
-**Descrizione**: aggiorna un **round** con la risposta dell'utente
+**Descrizione**: aggiorna un round con la risposta dell'utente
 
 **Request body**: un oggetto JSON con il risultato della risposta dell'utente
 ```json
@@ -267,7 +264,6 @@ API HTTP progettate e implementate nel progetto.
   "chosen_position": 2
 }
 ```
-
 **Risposta**: `200 OK` (successo), `500 Internal Server Error` (errore generico)
 
 **Response body**: _Nessuno_
@@ -278,11 +274,11 @@ API HTTP progettate e implementate nel progetto.
 
 **HTTP Method**: GET
 
-**Descrizione**: recupera tutte le **carte vinte** in una partita specifica.
+**Descrizione**: recupera tutte le carte vinte in una partita specifica
 
-**Risposta**: `200 OK` (successo), `500 Internal Server Error` (errore generico).
+**Risposta**: `200 OK` (successo), `500 Internal Server Error` (errore generico)
 
-**Response body**: Un array di oggetti **carta**.
+**Response body**: Un array di oggetti 'card'
 ```json
 [
   {
@@ -291,6 +287,7 @@ API HTTP progettate e implementate nel progetto.
     "image": "wifi.jpg",
     "misfortune_index": 14.0
   }
+  ...
 ]
 ```
 
@@ -300,11 +297,11 @@ API HTTP progettate e implementate nel progetto.
 
 **HTTP Method**: GET
 
-**Descrizione**: recupera tutte le **partite** giocate da un utente specifico
+**Descrizione**: recupera tutte le partite giocate da un utente specifico
 
 **Risposta**: `200 OK` (successo), `403 Forbidden` (l'utente non è autorizzato), `500 Internal Server Error` (errore generico)
 
-**Response body**: un array di oggetti **partita**.
+**Response body**: un array di oggetti 'game'.
 ```json
 [
   {
@@ -312,14 +309,12 @@ API HTTP progettate e implementate nel progetto.
     "user_id": 1,
     "date": "2025-06-16 23:34:08",
     "status": "win",
-    "score": 5
   },
   {
     "game_id": 11,
     "user_id": 1,
     "date": "2025-06-17 21:31:47",
     "status": "loss",
-    "score": 2
   }
 ]
 ```
@@ -330,36 +325,40 @@ API HTTP progettate e implementate nel progetto.
 
 **HTTP Method**: GET
 
-**Descrizione**: recupera la **cronologia** dettagliata di una partita specifica.
+**Descrizione**: recupera la cronologia dettagliata di una partita specifica
 
-**Risposta**: `200 OK` (successo), `500 Internal Server Error` (errore generico).
+**Risposta**: `200 OK` (successo), `500 Internal Server Error` (errore generico)
 
-**Response body**: Un oggetto con i dettagli della **cronologia** della partita.
+**Response body**: Un oggetto con i dettagli della cronologia della partita
 ```json
 {
   "game_id": 11,
-  "user_id": 1,
   "date": "2025-06-17 21:31:47",
   "status": "loss",
-  "score": 2,
+
   "initial_cards": [
-    { "card_id": 5, "description": "...", "image": "...", "misfortune_index": 50.0 },
-    { "card_id": 12, "description": "...", "image": "...", "misfortune_index": 35.5 },
-    { "card_id": 21, "description": "...", "image": "...", "misfortune_index": 5.0 }
+    {
+      "card_id": 5,
+      "description": "La stampante non funziona quando devi consegnare",
+      "image": "stampante.jpg",
+      "misfortune_index": 50.0
+    },
+    ...
   ],
+  
   "rounds": [
     {
       "round_number": 1,
       "guessed_correctly": 1,
       "chosen_position": 2,
-      "situation_card": { "card_id": 28, "description": "...", "image": "..." }
+      "card": {
+        "card_id": 48,
+        "description": "Durante una lezione online si attiva per sbaglio il microfono mentre stai dicendo qualcosa di compromettente",
+        "image": "microfono.jpg",
+        "misfortune_index": 65.5
+      }
     },
-    {
-      "round_number": 2,
-      "guessed_correctly": 0,
-      "chosen_position": 1,
-      "situation_card": { "card_id": 3, "description": "...", "image": "..." }
-    }
+    ...
   ]
 }
 ```
@@ -370,7 +369,7 @@ API HTTP progettate e implementate nel progetto.
 
 **HTTP Method**: PUT
 
-**Descrizione**: aggiorna lo **stato** di una partita (es. "win", "loss").
+**Descrizione**: aggiorna lo stato di una partita (win/lose)
 
 **Request body**: un oggetto JSON con il nuovo stato.
 ```json
@@ -378,8 +377,7 @@ API HTTP progettate e implementate nel progetto.
   "status": "win"
 }
 ```
-
-**Risposta**: `200 OK` (successo), `500 Internal Server Error` (errore generico).
+**Risposta**: `200 OK` (successo), `500 Internal Server Error` (errore generico)
 
 **Response body**: _Nessuno_
 
@@ -400,10 +398,8 @@ API HTTP progettate e implementate nel progetto.
   "user_id": 1,
   "date": "2025-06-17 21:31:47",
   "status": "loss",
-  "score": 2
 }
 ```
-
 ---
 
 ### **Ottenere i dati per la partita demo**
@@ -412,11 +408,11 @@ API HTTP progettate e implementate nel progetto.
 
 **HTTP Method**: GET
 
-**Descrizione**: recupera i dati necessari per avviare una sessione di gioco **demo**
+**Descrizione**: recupera i dati necessari per avviare una sessione di gioco demo
 
 **Risposta**: `200 OK` (successo), `500 Internal Server Error` (errore generico)
 
-**Response body**: un oggetto JSON contenente tre **carte iniziali** e una **carta situazione**.
+**Response body**: un oggetto JSON contenente tre carte iniziali e una nuova carta situazione
 ```json
 {
   "initialCards": [
@@ -426,20 +422,9 @@ API HTTP progettate e implementate nel progetto.
       "image": "stampante.jpg",
       "misfortune_index": 50.0
     },
-    {
-      "card_id": 12,
-      "description": "Perdi il treno per 10 secondi",
-      "image": "treno.jpg",
-      "misfortune_index": 35.5
-    },
-    {
-      "card_id": 21,
-      "description": "Il tuo youtuber preferito non pubblica video da un mese",
-      "image": "youtube.jpg",
-      "misfortune_index": 5.0
-    }
+    ...
   ],
-  "situation": {
+  "card": {
     "card_id": 8,
     "description": "Ti si scarica il PC durante un esame",
     "image": "pc.jpg",
@@ -506,13 +491,21 @@ Le informazioni sono salvate in un database SQlite (`stuffhappens.sqlite`).
 ## Main React Components
 
 - `LoginForm`, `LogoutButton` (in `AuthPage.jsx`): – Gestione autenticazione utente (login/logout)
-- `DemoGame` (in `DemoGame.jsx`) – Partita demo anonima
+
+- `DemoGame` (in `DemoGame.jsx`) – Partita demo anonima  
+
 - `GamePage` (in `GamePage.jsx`) – Pagina principale della partita
+
 - `GameSummary` (in `GameSummary.jsx`) – Riepilogo della partita appena giocata
+
 - `HomePage` (in `HomePage.jsx`) – Schermata iniziale con istruzioni del gioco
+
 - `LayoutPage` (in `LayoutPage.jsx`) – Layout comune dell'applicazione
+
 - `NavHeader` (in `NavHeader.jsx`) – Barra di navigazione in alto
+
 - `NotFound` (in `NotFound.jsx`) – Pagina di errore 404 per rotte non trovate
+
 - `UserHistory` (in `UserHistory.jsx`) – Cronologia partite dell’utente
 
 ## Screenshot
