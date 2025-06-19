@@ -68,8 +68,8 @@ PUT http://localhost:3001/api/game/round/1
 content-type: application/json
 
 {
-  "guessed_correctly": 1,
-  "chosen_position": 2
+  "chosen_position": 2,
+  "card_id": 7
 }
 
 ###

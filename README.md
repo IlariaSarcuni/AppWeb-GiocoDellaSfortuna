@@ -163,7 +163,7 @@ API HTTP progettate e implementate nel progetto.
 
 **Descrizione**: recupera le tre carte iniziali assegnate a una partita specifica
 
-**Risposta**: `200 OK` (successo), `404 Not Found` (partita non esistente), `500 Internal Server Error` (errore generico).
+**Risposta**: `200 OK` (successo), `404 Not Found` (partita non esistente), `500 Internal Server Error` (errore generico)
 
 **Response body**: Un array di tre oggetti 'card'
 ```json
@@ -213,17 +213,16 @@ API HTTP progettate e implementate nel progetto.
 
 **HTTP Method**: GET
 
-**Descrizione**: recupera la carta pe il round corrente di una partita
+**Descrizione**: recupera la carta per il round corrente di una partita
 
 **Risposta**: `200 OK` (successo), `404 Not Found` (partita non esistente o nessuna carta disponibile), `500 Internal Server Error` (errore generico)
 
-**Response body**: Un singolo oggetto 'card'.
+**Response body**: Un singolo oggetto 'card' senza l'indice di sfortuna
 ```json
 {
   "card_id": 28,
   "description": "La connessione Wi-Fi non funziona",
-  "image": "wifi.jpg",
-  "misfortune_index": 14.0
+  "image": "wifi.jpg"
 }
 ```
 
@@ -255,18 +254,30 @@ API HTTP progettate e implementate nel progetto.
 
 **HTTP Method**: PUT
 
-**Descrizione**: aggiorna un round con la risposta dell'utente
+**Descrizione**: aggiorna un round con la risposta dell'utente e verifica se è corretta lato server
 
-**Request body**: un oggetto JSON con il risultato della risposta dell'utente
+**Request body**: un oggetto JSON con la posizione scelta e l'ID della carta
+```json
+{
+  "chosen_position": 2,
+  "card_id": 28
+}
+```
+**Risposta**: `200 OK` (successo), `400 Bad Request` (manca l'indice di sfortuna), `500 Internal Server Error` (errore generico)
+
+**Response body**: Un oggetto che indica se la risposta è corretta e, in caso di risposta corretta, l'indice di sfortuna della carta
 ```json
 {
   "guessed_correctly": 1,
-  "chosen_position": 2
+  "misfortune_index": 14.0
 }
 ```
-**Risposta**: `200 OK` (successo), `500 Internal Server Error` (errore generico)
-
-**Response body**: _Nessuno_
+oppure in caso di errore:
+```json
+{
+  "guessed_correctly": 0
+}
+```
 
 ### **Ottenere tutte le carte vinte in una partita**
 
