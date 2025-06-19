@@ -147,7 +147,12 @@ app.get('/api/game/:game_id/situation', isLoggedIn, async (req, res) => {
     if (!cards.length) {
       res.status(404).json({ error: "Nessuna carta disponibile!" });
     } else {
-      res.json(cards[0]);
+      // Invia la carta senza l'indice di sfortuna
+      const { misfortune_index, ...safeCard } = cards[0];
+      // Salva l'indice di sfortuna in sessione per verifiche future
+      if (!req.session.situationIndices) req.session.situationIndices = {};
+      req.session.situationIndices[safeCard.card_id] = misfortune_index;
+      res.json(safeCard);
     }
 
   } catch (err) {
@@ -168,12 +173,39 @@ app.post('/api/game/:game_id/round', isLoggedIn, async (req, res) => {
   }
 });
 
-// 7. Aggiorna esito del round
+// 7. Aggiorna esito del round (e verifica lato server la correttezza)
 app.put('/api/game/round/:round_id', isLoggedIn, async (req, res) => {
   try {
-    const { guessed_correctly, chosen_position } = req.body;
+    const { chosen_position, card_id } = req.body;
+    
+    // Ottieni l'indice di sfortuna salvato nella sessione
+    const misfortune_index = req.session.situationIndices && req.session.situationIndices[card_id];
+    if (misfortune_index === undefined) {
+      return res.status(400).json({ error: "Manca l'indice di sfortuna per questa carta" });
+    }
+    
+    // Ottieni le carte possedute per calcolare la posizione corretta
+    const round = await gameDao.getRoundById(req.params.round_id);
+    const game_id = round.game_id;
+    const allCards = await gameDao.getAllPlayerCardsInGame(game_id);
+    
+    // Calcola la posizione corretta
+    let sorted = allCards.sort((a, b) => a.misfortune_index - b.misfortune_index);
+    let pos = 0;
+    while (pos < sorted.length && misfortune_index > sorted[pos].misfortune_index) pos++;
+    
+    // Determina se la risposta è corretta
+    const guessed_correctly = pos === chosen_position ? 1 : 0;
+    
+    // Aggiorna il risultato del round
     await gameDao.updateRoundResult(req.params.round_id, guessed_correctly, chosen_position);
-    res.status(200).end();
+    
+    // Se l'utente ha indovinato, restituisci l'indice di sfortuna
+    if (guessed_correctly) {
+      res.json({ guessed_correctly, misfortune_index });
+    } else {
+      res.json({ guessed_correctly });
+    }
   } catch (err) {
     console.error("Error in /api/game/round/:round_id (PUT):", err);
     res.status(500).json({ error: err.message || String(err) });

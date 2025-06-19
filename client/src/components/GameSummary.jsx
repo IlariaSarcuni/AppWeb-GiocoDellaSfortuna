@@ -85,7 +85,7 @@ function GameSummary() {
                 </Col>
               </Row>              
               <hr/>
-              <h5 className="mt-3">Carte ottenute:</h5>
+              <h5 className="mt-3">Carte raccolte:</h5>
                 {possessedCards.length > 0 ? (
                   <Row className="g-3">
                     {possessedCards.map(card => (

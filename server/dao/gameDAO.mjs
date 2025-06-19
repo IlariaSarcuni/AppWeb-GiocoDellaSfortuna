@@ -296,4 +296,48 @@ export default function GameDao() {
             });
         });
     };
+
+    // Ottieni un round specifico dal suo ID
+    this.getRoundById = (round_id) => {
+        return new Promise((resolve, reject) => {
+            const query = 'SELECT * FROM rounds WHERE round_id = ?';
+            db.get(query, [round_id], (err, row) => {
+                if (err) {
+                    reject(err);
+                } else if (!row) {
+                    reject(new Error('Round non trovato'));
+                } else {
+                    resolve(new Round(row.round_id, row.game_id, row.card_id, row.round_number, row.guessed_correctly, row.chosen_position, row.time));
+                }
+            });
+        });
+    };
+
+    // Ottieni tutte le carte possedute dal giocatore in una partita
+    this.getAllPlayerCardsInGame = (game_id) => {
+        return new Promise((resolve, reject) => {
+            // Otteniamo prima le carte iniziali
+            this.getInitialCardIds(game_id)
+                .then(initialIds => {
+                    // Poi le carte vinte 
+                    this.getWonCardsInGame(game_id)
+                        .then(wonCards => {
+                            // Unisco gli ID
+                            const wonIds = wonCards.map(c => c.card_id);
+                            const allIds = [...initialIds, ...wonIds];
+                            
+                            // Recupera tutte le informazioni delle carte
+                            if (allIds.length) {
+                                this.getCardsByIds(allIds)
+                                    .then(cards => resolve(cards))
+                                    .catch(err => reject(err));
+                            } else {
+                                resolve([]);
+                            }
+                        })
+                        .catch(err => reject(err));
+                })
+                .catch(err => reject(err));
+        });
+    };
 }

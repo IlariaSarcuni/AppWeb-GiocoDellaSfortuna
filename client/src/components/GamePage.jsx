@@ -93,14 +93,14 @@ function GamePage(props) {
       isGameSetupInProgress = false;
       setIsCreatingGameState(false);
       setLoading(false);
-    }
-  }
+    }  }
+  
   //Gestisce la sottomissione della scelta dell'utente
   async function handleSubmit(e, timeout = false) {
     if (e) e.preventDefault();
     setFeedback(null); // Pulisce feedback precedenti prima di sottomettere
 
-    if (loading || !situation || situation.misfortune_index == null) {
+    if (loading || !situation || !situation.card_id) {
       setFeedback({ type: "danger", msg: "La situazione non è pronta. Riprova." });
       if (situation) setPlayedCards(prev => [...prev, situation]);
       setShowResult(true);
@@ -111,25 +111,27 @@ function GamePage(props) {
       return;
     }
 
-    //Determina la posizione corretta
-    let misfortuneIndex = situation.misfortune_index;
-    let sorted = sortCards(allCards); //Carte possedute ordinate
-    let pos = 0;
-    while (pos < sorted.length && misfortuneIndex > sorted[pos].misfortune_index) pos++;
-    //Verifica se la posizione scelta dall'utente è corretta
-    const guessedCorrectly = !timeout && pos === chosenPos;
-
     try {
+      // Aggiungiamo il round
       const { round_id } = await API.addRound(gameId, situation.card_id, roundNumber);
-      await API.updateRoundResult(round_id, guessedCorrectly ? 1 : 0, chosenPos);
-
+      
+      // Facciamo verificare al server se la risposta è corretta
+      // Il server mantiene l'indice di sfortuna nella sessione
+      const result = await API.updateRoundResult(round_id, timeout ? null : chosenPos, situation.card_id);
+      
+      const guessedCorrectly = result.guessed_correctly === 1;
+      
       if (guessedCorrectly) {
+        // Se indovinato, il server ci restituisce l'indice di sfortuna
         setFeedback({
           type: "success",
           msg: "Complimenti, posizione corretta!",
-          extra: `Indice di sfortuna: ${misfortuneIndex}`
+          extra: `Indice di sfortuna: ${result.misfortune_index}`
         });
-        const updated = sortCards([...allCards, situation]);
+        
+        // Aggiorniamo la carta situazione con l'indice ricevuto dal server
+        const updatedSituation = {...situation, misfortune_index: result.misfortune_index};
+        const updated = sortCards([...allCards, updatedSituation]);
         setAllCards(updated);
         setNumWon((nw) => nw + 1);
 
@@ -260,7 +262,7 @@ function GamePage(props) {
         <>
           <Alert variant="danger" className="mt-3">
             <h4>Partita persa!</h4>
-            <p>Hai commesso 3 errori. Riprova!</p>
+            <p>Hai commesso 3 errori.</p>
           </Alert>
           <div className="mt-3 mb-3">
             <Button className="me-2" onClick={handleShowSummary}>Vedi riepilogo</Button>

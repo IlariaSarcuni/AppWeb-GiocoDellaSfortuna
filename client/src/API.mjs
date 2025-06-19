@@ -78,17 +78,18 @@ const addRound = async (game_id, card_id, round_number) => {
   }
 };
 
-// 7. Aggiorna esito del round (solo autenticati)
-const updateRoundResult = async (round_id, guessed_correctly, chosen_position) => {
+// 7. Aggiorna esito del round (solo autenticati) e verifica se la risposta è corretta
+const updateRoundResult = async (round_id, chosen_position, card_id) => {
   const response = await fetch(`${SERVER_URL}/api/game/round/${round_id}`, {
     method: 'PUT',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify({ guessed_correctly, chosen_position })
+    body: JSON.stringify({ chosen_position, card_id })
   });
   if (!response.ok) {
     throw new Error('Errore nell\'aggiornamento del round');
   }
+  return await response.json(); // { guessed_correctly, misfortune_index? }
 };
 
 // 8. Ottieni tutte le carte vinte in una partita (solo autenticati)
