@@ -119,43 +119,7 @@ API HTTP progettate e implementate nel progetto.
 { "game_id": 11 }
 ```
 
-### **Ottenere 3 carte iniziali per una nuova partita (stateless)**
-
-**URL**: `/api/game/init-cards`
-
-**HTTP Method**: GET
-
-**Descrizione**: recupera 3 carte casuali per una nuova partita
-
-**Query Params**: `exclude` (opzionale) - una stringa di ID di carte da escludere durante i successivi round della partita
-
-**Risposta**: `200 OK` (successo), `500 Internal Server Error` (errore generico)
-
-**Response body**: Un array di tre oggetti 'card'.
-```json
-[
-  {
-    "card_id": 5,
-    "description": "La stampante non funziona quando devi consegnare",
-    "image": "stampante.jpg",
-    "misfortune_index": 50.0
-  },
-  {
-    "card_id": 12,
-    "description": "Il relatore di tesi non risponde alle tue email",
-    "image": "tesi.jpg",
-    "misfortune_index": 77.0
-  },
-  {
-    "card_id": 21,
-    "description": "La macchinetta del caffè si mangia le monete",
-    "image": "monete.jpg",
-    "misfortune_index": 5.0
-  }
-]
-```
-
-### **Ottenere le carte iniziali di una partita (stateful)**
+### **Ottenere le 3 carte iniziali di una partita**
 
 **URL**: `/api/game/:game_id/init-cards`
 
@@ -398,11 +362,11 @@ oppure in caso di errore:
 
 **HTTP Method**: GET
 
-**Descrizione**: recupera i dati riassuntivi di una singola **partita**.
+**Descrizione**: recupera i dati riassuntivi di una singola partita.
 
 **Risposta**: `200 OK` (successo), `404 Not Found` (partita non trovata), `500 Internal Server Error` (errore generico).
 
-**Response body**: Un oggetto **partita**.
+**Response body**: Un oggetto partita.
 ```json
 {
   "game_id": 11,
